@@ -254,7 +254,7 @@ function backendCompatibleSchoolThemePayload(payload) {
   };
 }
 
-const defaultSchool = { school_name: 'Wood-World Missions Int. School', address: '', contact: '', location: '', logo_url: '', theme_choice: 'emerald', header_theme_choice: 'softWhite', footer_theme_choice: 'midnight', login_background_url: '', font_choice: 'inter', principal_signature_url: '', audio_greeting_enabled: true, login_greeting_template: 'Welcome {firstName}, You may proceed.', logout_greeting_message: 'Goodbye, Nice having you on board.', failed_login_greeting_message: 'Login fails, please verify your identity carefully or contact your school IT department to ratify the issue.', platform_access_locked: false, school_admin_access_locked: false, school_license_plan: '', school_license_label: 'No license issued', school_license_code: '', school_license_status: 'Not Issued', school_license_issued_at: '', school_license_activated_at: '', school_license_expires_at: '', school_license_last_checked_at: '', promotion_pass_mark: 50 };
+const defaultSchool = { school_name: 'Wood-World Missions Int. School', address: '', contact: '', location: '', logo_url: '', theme_choice: 'emerald', header_theme_choice: 'softWhite', footer_theme_choice: 'midnight', login_background_url: '', font_choice: 'inter', principal_signature_url: '', audio_greeting_enabled: true, login_greeting_template: 'Welcome {firstName}, You may proceed.', logout_greeting_message: 'Goodbye, Nice having you on board.', failed_login_greeting_message: 'Login fails, please verify your identity carefully or contact your school IT department to ratify the issue.', platform_access_locked: false, school_admin_access_locked: false, school_license_plan: '', school_license_label: 'No license issued', school_license_code: '', school_license_status: 'Not Issued', school_license_issued_at: '', school_license_activated_at: '', school_license_expires_at: '', school_license_last_checked_at: '', super_admin_username: 'superadmin', super_admin_password: 'superadmin12345', promotion_pass_mark: 50 };
 const legacyUid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const uid = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : legacyUid());
 const newRecordId = uid;
@@ -262,7 +262,7 @@ const today = () => new Date().toISOString().slice(0,10);
 const safeArray = v => Array.isArray(v) ? v : [];
 
 const SUPER_ADMIN_DEFAULT_USERNAME = 'superadmin';
-const SUPER_ADMIN_DEFAULT_PASSWORD = 'SuperAdmin@2026@1';
+const SUPER_ADMIN_DEFAULT_PASSWORD = 'superadmin12345';
 const PLATFORM_CONTROL_STORAGE_KEY = 'school_platform_control_settings_v1';
 const LICENSE_PLAN_OPTIONS = {
   fourMonths: { label: '4 Months License', months: 4, code: '4M' },
@@ -539,7 +539,9 @@ function normalizeCrossModuleConsistency(raw={}) {
       school_license_issued_at: String(raw.schoolSettings?.school_license_issued_at ?? readPlatformControlSettings().school_license_issued_at ?? ''),
       school_license_activated_at: String(raw.schoolSettings?.school_license_activated_at ?? readPlatformControlSettings().school_license_activated_at ?? ''),
       school_license_expires_at: String(raw.schoolSettings?.school_license_expires_at ?? readPlatformControlSettings().school_license_expires_at ?? ''),
-      school_license_last_checked_at: String(raw.schoolSettings?.school_license_last_checked_at ?? readPlatformControlSettings().school_license_last_checked_at ?? '')
+      school_license_last_checked_at: String(raw.schoolSettings?.school_license_last_checked_at ?? readPlatformControlSettings().school_license_last_checked_at ?? ''),
+      super_admin_username: String(raw.schoolSettings?.super_admin_username || SUPER_ADMIN_DEFAULT_USERNAME).trim() || SUPER_ADMIN_DEFAULT_USERNAME,
+      super_admin_password: String(raw.schoolSettings?.super_admin_password || SUPER_ADMIN_DEFAULT_PASSWORD)
     },
     teachers,
     students,
@@ -2898,7 +2900,9 @@ function usePersistentSchoolData() {
       school_license_issued_at: nextVal.school_license_issued_at || null,
       school_license_activated_at: nextVal.school_license_activated_at || null,
       school_license_expires_at: nextVal.school_license_expires_at || null,
-      school_license_last_checked_at: nextVal.school_license_last_checked_at || null
+      school_license_last_checked_at: nextVal.school_license_last_checked_at || null,
+      super_admin_username: String(nextVal.super_admin_username || SUPER_ADMIN_DEFAULT_USERNAME).trim() || SUPER_ADMIN_DEFAULT_USERNAME,
+      super_admin_password: String(nextVal.super_admin_password || SUPER_ADMIN_DEFAULT_PASSWORD)
     };
     const stripPlatformPayloadFields = obj => {
       const copy = { ...obj };
@@ -4833,10 +4837,12 @@ async function saveSchoolFrontendOutputFolder(settings={}, options={}) {
 }
 
 function SchoolSettingsManager() {
-  const { data, setSchoolSettings } = React.useContext(DataContext);
-  const { themeChoice, setThemeChoice } = React.useContext(SessionContext);
+  const { data, setSchoolSettings, notify } = React.useContext(DataContext);
+  const { session, setSession, themeChoice, setThemeChoice } = React.useContext(SessionContext);
   const [form, setForm] = React.useState(data.schoolSettings);
-  React.useEffect(() => setForm(data.schoolSettings), [data.schoolSettings]);
+  const [confirmSuperAdminPassword, setConfirmSuperAdminPassword] = React.useState('');
+  React.useEffect(() => { setForm(data.schoolSettings); setConfirmSuperAdminPassword(''); }, [data.schoolSettings]);
+  const isSuperAdmin = session?.role === 'superadmin';
 
   const saveSchoolDetails = async () => {
     await setSchoolSettings(current => ({
@@ -4857,11 +4863,7 @@ function SchoolSettingsManager() {
       header_theme_choice: normalizeHeaderThemeChoice(form.header_theme_choice || 'softWhite'),
       footer_theme_choice: normalizeFooterThemeChoice(form.footer_theme_choice || 'midnight'),
       login_background_url: form.login_background_url || '',
-      font_choice: normalizeFontChoice(form.font_choice || 'inter'),
-      audio_greeting_enabled: form.audio_greeting_enabled !== false,
-      login_greeting_template: form.login_greeting_template || defaultSchool.login_greeting_template,
-      logout_greeting_message: form.logout_greeting_message || defaultSchool.logout_greeting_message,
-      failed_login_greeting_message: form.failed_login_greeting_message || defaultSchool.failed_login_greeting_message
+      font_choice: normalizeFontChoice(form.font_choice || 'inter')
     }));
   };
 
@@ -4885,15 +4887,28 @@ function SchoolSettingsManager() {
     safeStorageSet(FOOTER_THEME_STORAGE_KEY, next);
     applyTheme(themeChoice, nextForm.header_theme_choice || 'softWhite', next);
   };
-  const toggleAudioGreeting = async () => {
-    const nextEnabled = !(form.audio_greeting_enabled !== false);
-    const nextForm = { ...form, audio_greeting_enabled: nextEnabled };
-    setForm(nextForm);
-    await setSchoolSettings(current => ({ ...current, audio_greeting_enabled: nextEnabled }));
+  const saveSuperAdminLogin = async e => {
+    e.preventDefault();
+    const username = String(form.super_admin_username || '').trim() || SUPER_ADMIN_DEFAULT_USERNAME;
+    const password = String(form.super_admin_password || '').trim();
+    const confirmPassword = String(confirmSuperAdminPassword || '').trim();
+    if (!username) { notify('error', 'Super Admin username is required.'); return; }
+    if (password.length < 8) { notify('error', 'Super Admin password must be at least 8 characters.'); return; }
+    if (confirmPassword && confirmPassword !== password) { notify('error', 'Super Admin password confirmation does not match.'); return; }
+    await setSchoolSettings(current => ({
+      ...current,
+      super_admin_username: username,
+      super_admin_password: password
+    }));
+    const nextSession = { ...session, username };
+    setSession(nextSession);
+    saveAppUserSession(nextSession);
+    setForm(current => ({ ...current, super_admin_username: username, super_admin_password: password }));
+    setConfirmSuperAdminPassword('');
   };
 
   return <div className="space-y-4">
-    <SectionHeader title="School Logo, Details and Personalization" subtitle="Manage the current school details, logo, themes, login screen, and personalization controls." />
+    <SectionHeader title="School Logo, Details and Appearance" subtitle="Manage the current school details, logo, themes, and login screen." />
     <div className="card p-4 md:p-5 max-w-6xl">
       <div className="grid xl:grid-cols-[1fr_1.2fr] gap-5 items-start">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
@@ -4913,13 +4928,27 @@ function SchoolSettingsManager() {
           </div>
         </div>
 
+        {isSuperAdmin && <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+            <div>
+              <div className="font-bold text-lg">Super Admin Login</div>
+            </div>
+            <button type="submit" form="super-admin-login-form" className="btn btn-primary"><i className="fas fa-save mr-2"></i>Save Super Admin Login</button>
+          </div>
+          <form id="super-admin-login-form" onSubmit={saveSuperAdminLogin} className="grid md:grid-cols-3 gap-4 items-end">
+            <Field label="Super Admin Username"><input className="input" value={form.super_admin_username || SUPER_ADMIN_DEFAULT_USERNAME} onChange={e => setForm({ ...form, super_admin_username: e.target.value })} /></Field>
+            <Field label="Super Admin Password"><input type="password" className="input" value={form.super_admin_password || ''} onChange={e => setForm({ ...form, super_admin_password: e.target.value })} /></Field>
+            <Field label="Confirm Password"><input type="password" className="input" value={confirmSuperAdminPassword} onChange={e => setConfirmSuperAdminPassword(e.target.value)} placeholder="Optional when unchanged" /></Field>
+          </form>
+        </div>}
+
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
-              <div className="font-bold text-lg">Personalization</div>
-              <div className="text-sm text-slate-500 mt-1">Login background, fonts, themes, and audio greeting controls.</div>
+              <div className="font-bold text-lg">Appearance</div>
+              <div className="text-sm text-slate-500 mt-1">Login background, fonts, and themes.</div>
             </div>
-            <button type="button" className="btn btn-primary" onClick={savePersonalization}>Save Personalization</button>
+            <button type="button" className="btn btn-primary" onClick={savePersonalization}>Save Appearance</button>
           </div>
 
           <div className="grid lg:grid-cols-[1.1fr_.9fr] gap-4 items-start border-b border-slate-200 pb-4">
@@ -4965,40 +4994,6 @@ function SchoolSettingsManager() {
           <div className="space-y-3 border-b border-slate-200 pb-4">
             <div className="text-sm font-semibold text-slate-700">Quick Theme Buttons</div>
             <div className="flex flex-wrap gap-3">{Object.entries(THEME_OPTIONS).map(([key, val]) => <button key={key} type="button" onClick={() => previewTheme(key)} className={`px-4 py-2.5 rounded-xl border ${themeChoice === key ? 'ring-2 ring-offset-2' : ''}`} style={{ background: val.primarySoft, borderColor: val.primary }}><span className="inline-flex items-center gap-2"><span className="w-4 h-4 rounded-full" style={{ background: val.primary }}></span>{val.label}</span></button>)}</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-              <div>
-                <div className="font-bold text-base">Audio Greeting Personalization</div>
-                <div className="text-sm text-slate-500 mt-1">Turn greetings off or on, and customize the spoken messages for login, logout, and failed login.</div>
-              </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div>
-                  <div className="font-semibold text-slate-800">Audio Greeting Switch</div>
-                  <div className="text-xs text-slate-500">This switch applies immediately across the system and is also saved for future logins and logouts.</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={toggleAudioGreeting}
-                  className={`relative inline-flex h-11 w-24 items-center rounded-full transition ${form.audio_greeting_enabled !== false ? 'bg-emerald-600' : 'bg-slate-300'}`}
-                  aria-pressed={form.audio_greeting_enabled !== false}
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-700 shadow transition" style={{ transform: `translateX(${form.audio_greeting_enabled !== false ? '48px' : '4px'})` }}>{form.audio_greeting_enabled !== false ? 'ON' : 'OFF'}</span>
-                </button>
-              </div>
-            </div>
-            <div className="grid lg:grid-cols-3 gap-4">
-              <Field label="Login Audio Message">
-                <textarea className="textarea" rows="3" value={form.login_greeting_template || ''} onChange={e => setForm({ ...form, login_greeting_template: e.target.value })} placeholder="Use {firstName} where the user's first name should be spoken." />
-              </Field>
-              <Field label="Logout Audio Message">
-                <textarea className="textarea" rows="3" value={form.logout_greeting_message || ''} onChange={e => setForm({ ...form, logout_greeting_message: e.target.value })} />
-              </Field>
-              <Field label="Failed Login Audio Message">
-                <textarea className="textarea" rows="3" value={form.failed_login_greeting_message || ''} onChange={e => setForm({ ...form, failed_login_greeting_message: e.target.value })} />
-              </Field>
-            </div>
           </div>
         </div>
       </div>
