@@ -3226,6 +3226,40 @@ function Modal({ open, title, onClose, children, max='max-w-4xl' }) { if (!open)
 function StatCard({ label, value, icon, accent='emerald' }) { return <div className="card p-3 md:p-4 mobile-card-tight"><div className="flex items-center gap-3"><div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center shrink-0"><i className={`fas fa-${icon} text-${accent}-600 text-base md:text-lg`}></i></div><div className="min-w-0"><p className="text-xs md:text-sm text-slate-500 leading-tight">{label}</p><p className="text-xl md:text-2xl font-extrabold leading-tight mt-1">{value}</p></div></div></div>; }
 function SectionHeader({ title, subtitle, actions }) { return <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><div><h2 className="text-xl md:text-2xl font-bold leading-tight">{title}</h2>{subtitle && <p className="text-slate-500 text-sm mt-1 leading-snug">{subtitle}</p>}</div><div className="flex flex-wrap gap-2">{actions}</div></div>; }
 function ImageInput({ label, value, onChange, storageFolder='general' }) { const { notify } = React.useContext(DataContext); const [uploading, setUploading] = React.useState(false); return <div><label className="block text-sm font-semibold mb-2">{label}</label><div className="flex items-center gap-4">{value ? <img src={value} alt="" className="w-16 h-16 rounded-full object-cover border" /> : <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center border"><i className="fas fa-image text-slate-400"></i></div>}<div className="space-y-2"><input type="file" accept="image/*" disabled={uploading} onChange={async e => { const file = e.target.files?.[0]; if (!file) return; setUploading(true); let rawDataUrl = ''; try { rawDataUrl = await fileToDataUrl(file); if ((storageFolder || label) === 'school-logo') window.__schoolLogoPackageDataUrl = rawDataUrl; } catch (_) {} try { const url = await uploadImageToStorage(file, storageFolder || label); onChange(url); notify('success', 'Image uploaded successfully.'); } catch (error) { console.error('Image upload failed', error); try { const fallback = rawDataUrl || await fileToDataUrl(file); if ((storageFolder || label) === 'school-logo') window.__schoolLogoPackageDataUrl = fallback; onChange(fallback); notify('info', 'Storage upload failed, so a local image version was used.'); } catch (_) { notify('error', error?.message || 'Image upload failed.'); } } finally { setUploading(false); } }} /><div className="text-xs text-slate-400">{uploading ? 'Uploading image...' : 'PNG or JPG, up to 2MB.'}</div></div></div></div>; }
+
+function LocalSchoolPackageLogoInput({ value='', onChange }) {
+  const { notify } = React.useContext(DataContext);
+  const [loading, setLoading] = React.useState(false);
+  const handleFile = async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      validateImageFile(file);
+      const dataUrl = await fileToDataUrl(file);
+      window.__schoolLogoPackageDataUrl = dataUrl;
+      onChange(dataUrl);
+      notify('success', 'New school logo selected.');
+    } catch (error) {
+      notify('error', error?.message || 'Logo selection failed.');
+    } finally {
+      event.target.value = '';
+      setLoading(false);
+    }
+  };
+  const clearLogo = () => {
+    window.__schoolLogoPackageDataUrl = '';
+    onChange('');
+  };
+  return <div className="flex items-center gap-3">
+    {value ? <img src={value} className="w-16 h-16 rounded-xl object-cover border bg-white" /> : <div className="w-16 h-16 rounded-xl border bg-slate-50 flex items-center justify-center text-slate-400"><i className="fas fa-image"></i></div>}
+    <div className="flex flex-wrap gap-2">
+      <label className={`btn btn-outline cursor-pointer ${loading ? 'opacity-70 pointer-events-none' : ''}`}><i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-upload'} mr-2`}></i>{loading ? 'Loading' : 'Select Logo'}<input type="file" accept="image/*" className="hidden" disabled={loading} onChange={handleFile} /></label>
+      {value && <button type="button" className="btn btn-secondary" onClick={clearLogo}><i className="fas fa-xmark mr-2"></i>Remove</button>}
+    </div>
+  </div>;
+}
+
 function LoginBackgroundEditorInput({ label, value, onChange, storageFolder='login-background' }) {
   const { notify } = React.useContext(DataContext);
   const previewRef = React.useRef(null);
@@ -3847,7 +3881,7 @@ function Sidebar() {
   const userAccessRestricted = isWholeSchoolPortalRestricted(session.role, data.schoolSettings);
   const items = React.useMemo(() => {
     let navItems = [];
-    if (session.role === 'superadmin') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['schooladmin', 'School Admin Credentials', 'user-shield'], ['access', 'Platform Access Control', 'lock'], ['license', 'License Management', 'certificate'], ['schoolsettings', 'School Settings', 'cog']];
+    if (session.role === 'superadmin') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['schooladmin', 'School Admin Credentials', 'user-shield'], ['access', 'Platform Access Control', 'lock'], ['license', 'License Management', 'certificate'], ['schoolsettings', 'School Settings', 'cog'], ['newschoolpackage', 'New School GitHub Package', 'box-open']];
     else if (session.role === 'admin') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['license', 'License Plan Usage', 'certificate'], ['principals', 'Principal Management', 'crown'], ['teachers', 'Teachers Management', 'chalkboard-user'], ['students', 'Students Management', 'user-graduate'], ['parents', 'Parents Management', 'users'], ['accountstaff', 'Account Office Staff', 'calculator'], ['classes', 'Classes Management', 'layer-group'], ['subjects', 'Subjects Management', 'book'], ['lms', 'LMS Center', 'laptop-code'], ['timetable', 'Timetable Management', 'clock'], ['accounts', 'Accounts & Credentials', 'key'], ['archive', 'Archive Records', 'box-archive'], ['chat', 'System Chat', 'comments'], ['settings', 'School Logo & Details', 'cog']];
     else if (session.role === 'teacher') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['students', 'Student Management', 'users'], ['attendance', 'Attendance Records', 'calendar-check'], ['grades', 'Grades', 'star'], ['lms', 'LMS Workspace', 'laptop-code'], ['salary', 'Salary Record', 'wallet'], ['timetable', 'Timetable', 'clock'], ['chat', 'System Chat', 'comments'], ['profile', 'My Profile', 'image']];
     else if (session.role === 'student') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['grades', 'Grades', 'star'], ['attendance', 'Attendance Records', 'calendar'], ['fees', 'Fee Payments', 'money-bill-wave'], ['learning', 'My Learning', 'laptop-code'], ['timetable', 'Timetable', 'clock'], ['chat', 'System Chat', 'comments']];
@@ -3972,88 +4006,110 @@ function SchoolAdminLicenseUsage({ lockedMode=false }) {
 
 
 function SuperAdminSchoolPackageSettings() {
-  const { data, setSchoolSettings, notify } = React.useContext(DataContext);
-  const [form, setForm] = React.useState(data.schoolSettings);
-  const [deployOptions, setDeployOptions] = React.useState({ app_short_name: schoolDeploymentShortName(data.schoolSettings.school_name), supabase_url: SUPABASE_URL, supabase_anon_key: SUPABASE_ANON_KEY });
-  React.useEffect(() => setForm(data.schoolSettings), [data.schoolSettings]);
-  React.useEffect(() => setDeployOptions(current => ({ ...current, app_short_name: current.app_short_name || schoolDeploymentShortName(data.schoolSettings.school_name) })), [data.schoolSettings.school_name]);
-  const packagePayload = () => ({
-    ...data.schoolSettings,
-    ...form,
-    school_name: String(form.school_name || '').trim() || 'School',
-    address: form.address || '',
-    contact: form.contact || '',
-    location: form.location || '',
-    logo_url: form.logo_url || '',
-    theme_choice: normalizeThemeChoice(form.theme_choice || data.schoolSettings.theme_choice || 'emerald'),
-    header_theme_choice: normalizeHeaderThemeChoice(form.header_theme_choice || data.schoolSettings.header_theme_choice || 'softWhite'),
-    footer_theme_choice: normalizeFooterThemeChoice(form.footer_theme_choice || data.schoolSettings.footer_theme_choice || 'midnight'),
-    font_choice: normalizeFontChoice(form.font_choice || data.schoolSettings.font_choice || 'inter')
+  const { data, notify } = React.useContext(DataContext);
+  const currentSettings = data.schoolSettings || defaultSchool;
+  const initialPackageForm = React.useCallback(() => ({
+    school_name: '',
+    logo_url: '',
+    address: '',
+    contact: '',
+    location: '',
+    app_short_name: '',
+    supabase_url: '',
+    supabase_anon_key: '',
+    theme_choice: normalizeThemeChoice(currentSettings.theme_choice || 'emerald'),
+    header_theme_choice: normalizeHeaderThemeChoice(currentSettings.header_theme_choice || 'softWhite'),
+    footer_theme_choice: normalizeFooterThemeChoice(currentSettings.footer_theme_choice || 'midnight'),
+    font_choice: normalizeFontChoice(currentSettings.font_choice || 'inter')
+  }), [currentSettings.theme_choice, currentSettings.header_theme_choice, currentSettings.footer_theme_choice, currentSettings.font_choice]);
+  const [packageForm, setPackageForm] = React.useState(initialPackageForm);
+  const resetPackageForm = () => {
+    window.__schoolLogoPackageDataUrl = '';
+    setPackageForm(initialPackageForm());
+  };
+  const updatePackageField = (key, value) => setPackageForm(current => {
+    const next = { ...current, [key]: value };
+    if (key === 'school_name' && !current.app_short_name) next.app_short_name = schoolDeploymentShortName(value, '');
+    if (key === 'logo_url') window.__schoolLogoPackageDataUrl = value || '';
+    return next;
   });
-  const saveDetails = async () => {
-    await setSchoolSettings(current => ({
-      ...current,
-      school_name: packagePayload().school_name,
-      address: packagePayload().address,
-      contact: packagePayload().contact,
-      location: packagePayload().location,
-      logo_url: packagePayload().logo_url
-    }));
-    notify('success', 'School details saved.');
+  const buildPackageSettingsPayload = () => ({
+    ...currentSettings,
+    school_name: String(packageForm.school_name || '').trim(),
+    address: String(packageForm.address || '').trim(),
+    contact: String(packageForm.contact || '').trim(),
+    location: String(packageForm.location || '').trim(),
+    logo_url: String(packageForm.logo_url || '').trim(),
+    theme_choice: normalizeThemeChoice(packageForm.theme_choice || currentSettings.theme_choice || 'emerald'),
+    header_theme_choice: normalizeHeaderThemeChoice(packageForm.header_theme_choice || currentSettings.header_theme_choice || 'softWhite'),
+    footer_theme_choice: normalizeFooterThemeChoice(packageForm.footer_theme_choice || currentSettings.footer_theme_choice || 'midnight'),
+    font_choice: normalizeFontChoice(packageForm.font_choice || currentSettings.font_choice || 'inter')
+  });
+  const buildPackageOptionsPayload = () => ({
+    app_short_name: String(packageForm.app_short_name || '').trim(),
+    supabase_url: String(packageForm.supabase_url || '').trim(),
+    supabase_anon_key: String(packageForm.supabase_anon_key || '').trim()
+  });
+  const validatePackagePayload = () => {
+    const payload = buildPackageSettingsPayload();
+    const options = buildPackageOptionsPayload();
+    if (!payload.school_name) throw new Error('Enter the new school name.');
+    if (!payload.logo_url) throw new Error('Select the new school logo.');
+    if (!options.supabase_url) throw new Error('Enter the new school Supabase project URL.');
+    if (!options.supabase_anon_key) throw new Error('Enter the new school Supabase anon key.');
+    return { payload, options };
   };
   const generateZipPackage = async () => {
     try {
-      await downloadSchoolFrontendZip(packagePayload(), deployOptions);
-      notify('success', 'GitHub package generated.');
+      const { payload, options } = validatePackagePayload();
+      await downloadSchoolFrontendZip(payload, options);
+      notify('success', 'New school GitHub package generated.');
     } catch (error) {
       notify('error', error?.message || 'Package generation failed.');
     }
   };
   const exportOutputFolder = async () => {
     try {
-      const result = await saveSchoolFrontendOutputFolder(packagePayload(), deployOptions);
-      notify('success', result === 'folder' ? 'GitHub output folder created.' : 'GitHub package generated.');
+      const { payload, options } = validatePackagePayload();
+      const result = await saveSchoolFrontendOutputFolder(payload, options);
+      notify('success', result === 'folder' ? 'New school output folder created.' : 'New school GitHub package generated.');
     } catch (error) {
       if (error?.name === 'AbortError') return;
       notify('error', error?.message || 'Package export failed.');
     }
   };
-  return <div className="space-y-5">
-    <SectionHeader title="Super Admin School Settings" subtitle="New School GitHub Package is available only to Super Admin." />
+  return <div className="space-y-4">
+    <SectionHeader title="New School GitHub Package" />
     <div className="card p-5 space-y-5 max-w-6xl">
       <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
         <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center"><i className="fas fa-box-open"></i></div>
-        <div>
-          <h3 className="font-extrabold text-lg text-slate-900">New School GitHub Package</h3>
-        </div>
+        <div><h3 className="font-extrabold text-lg text-slate-900">New School GitHub Package</h3></div>
       </div>
-      <div className="grid lg:grid-cols-[.9fr_1.1fr] gap-5 items-start">
+      <div className="grid lg:grid-cols-[.95fr_1.05fr] gap-5 items-start">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
-            <div className="font-bold text-base">School Details</div>
-            <button type="button" className="btn btn-outline" onClick={saveDetails}><i className="fas fa-save mr-2"></i>Save Details</button>
-          </div>
-          <ImageInput label="School Logo" storageFolder="school-logo" value={form.logo_url || ''} onChange={logo_url => setForm({ ...form, logo_url })} />
+          <div className="font-bold text-base border-b border-slate-200 pb-3">New School Branding</div>
+          <Field label="New School Name"><input className="input" value={packageForm.school_name || ''} onChange={e => updatePackageField('school_name', e.target.value)} /></Field>
+          <Field label="New School Logo"><LocalSchoolPackageLogoInput value={packageForm.logo_url || ''} onChange={logo_url => updatePackageField('logo_url', logo_url)} /></Field>
           <div className="grid md:grid-cols-2 gap-4">
-            <Field label="School Name"><input className="input" value={form.school_name || ''} onChange={e => setForm({ ...form, school_name: e.target.value })} /></Field>
-            <Field label="Address"><input className="input" value={form.address || ''} onChange={e => setForm({ ...form, address: e.target.value })} /></Field>
-            <Field label="Contact"><input className="input" value={form.contact || ''} onChange={e => setForm({ ...form, contact: e.target.value })} /></Field>
-            <Field label="Location"><input className="input" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} /></Field>
+            <Field label="New School Address"><input className="input" value={packageForm.address || ''} onChange={e => updatePackageField('address', e.target.value)} /></Field>
+            <Field label="New School Contact"><input className="input" value={packageForm.contact || ''} onChange={e => updatePackageField('contact', e.target.value)} /></Field>
+            <Field label="New School Location"><input className="input" value={packageForm.location || ''} onChange={e => updatePackageField('location', e.target.value)} /></Field>
+            <Field label="App Short Name"><input className="input" value={packageForm.app_short_name || ''} onChange={e => updatePackageField('app_short_name', e.target.value)} /></Field>
           </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
           <div className="font-bold text-base border-b border-slate-200 pb-3">GitHub Package Settings</div>
-          <div className="grid md:grid-cols-3 gap-4">
-            <Field label="App Short Name"><input className="input" value={deployOptions.app_short_name || ''} onChange={e => setDeployOptions({ ...deployOptions, app_short_name: e.target.value })} /></Field>
-            <Field label="Supabase Project URL"><input className="input" value={deployOptions.supabase_url || ''} onChange={e => setDeployOptions({ ...deployOptions, supabase_url: e.target.value })} /></Field>
-            <Field label="Supabase Anon Key"><input className="input" value={deployOptions.supabase_anon_key || ''} onChange={e => setDeployOptions({ ...deployOptions, supabase_anon_key: e.target.value })} /></Field>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="Supabase Project URL"><input className="input" value={packageForm.supabase_url || ''} onChange={e => updatePackageField('supabase_url', e.target.value)} /></Field>
+            <Field label="Supabase Anon Key"><input className="input" value={packageForm.supabase_anon_key || ''} onChange={e => updatePackageField('supabase_anon_key', e.target.value)} /></Field>
           </div>
           <div className="grid md:grid-cols-3 gap-4">
-            <Field label="Main Theme"><select className="select" value={form.theme_choice || 'emerald'} onChange={e => setForm({ ...form, theme_choice: e.target.value })}>{Object.entries(THEME_OPTIONS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></Field>
-            <Field label="Header Theme"><select className="select" value={form.header_theme_choice || 'softWhite'} onChange={e => setForm({ ...form, header_theme_choice: e.target.value })}>{Object.entries(HEADER_THEME_OPTIONS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></Field>
-            <Field label="Footer Theme"><select className="select" value={form.footer_theme_choice || 'midnight'} onChange={e => setForm({ ...form, footer_theme_choice: e.target.value })}>{Object.entries(FOOTER_THEME_OPTIONS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></Field>
+            <Field label="Main Theme"><select className="select" value={packageForm.theme_choice || 'emerald'} onChange={e => updatePackageField('theme_choice', e.target.value)}>{Object.entries(THEME_OPTIONS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></Field>
+            <Field label="Header Theme"><select className="select" value={packageForm.header_theme_choice || 'softWhite'} onChange={e => updatePackageField('header_theme_choice', e.target.value)}>{Object.entries(HEADER_THEME_OPTIONS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></Field>
+            <Field label="Footer Theme"><select className="select" value={packageForm.footer_theme_choice || 'midnight'} onChange={e => updatePackageField('footer_theme_choice', e.target.value)}>{Object.entries(FOOTER_THEME_OPTIONS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></Field>
           </div>
           <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button type="button" className="btn btn-secondary" onClick={resetPackageForm}><i className="fas fa-rotate-left mr-2"></i>Reset</button>
             <button type="button" className="btn btn-outline" onClick={generateZipPackage}><i className="fas fa-file-zipper mr-2"></i>Download GitHub ZIP</button>
             <button type="button" className="btn btn-primary" onClick={exportOutputFolder}><i className="fas fa-folder-plus mr-2"></i>Create Output Folder</button>
           </div>
@@ -4157,7 +4213,8 @@ function SuperAdminDashboard({ activeNav }) {
   if (activeNav === 'schooladmin') return credentialsPanel;
   if (activeNav === 'access') return accessPanel;
   if (activeNav === 'license') return licensePanel;
-  if (activeNav === 'schoolsettings') return <SuperAdminSchoolPackageSettings />;
+  if (activeNav === 'schoolsettings') return <SchoolSettingsManager />;
+  if (activeNav === 'newschoolpackage') return <SuperAdminSchoolPackageSettings />;
   return <div className="space-y-5"><SectionHeader title="Super Admin Dashboard" subtitle="Platform-level control for School Admin access, licensing, and School Admin credentials." /><div className="grid-fit"><StatCard label="Platform Access" value={restricted ? 'Locked' : 'Unlocked'} icon={restricted ? 'lock' : 'unlock'} accent={restricted ? 'rose' : 'emerald'} /><StatCard label="License Status" value={license.status} icon="certificate" accent={license.active ? 'emerald' : 'amber'} /><StatCard label="School Admin Username" value={adminCredential.username || 'Not set'} icon="user-shield" accent="blue" /></div>{accessPanel}{licensePanel}{credentialsPanel}</div>;
 }
 
@@ -4665,7 +4722,8 @@ function schoolDosDateTime(date=new Date()) {
   return { time, day };
 }
 function writeSchoolZipHeader(signature, fields, nameBytes, extraBytes=new Uint8Array(0)) {
-  const size = 4 + fields.length * 2 + nameBytes.length + extraBytes.length;
+  const fieldBytes = safeArray(fields).reduce((sum, field) => sum + (field.bits === 32 ? 4 : 2), 0);
+  const size = 4 + fieldBytes + nameBytes.length + extraBytes.length;
   const bytes = new Uint8Array(size);
   const view = new DataView(bytes.buffer);
   view.setUint32(0, signature, true);
@@ -4729,7 +4787,7 @@ function downloadSchoolBlob(blob, filename='download.zip') {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 async function buildSchoolFrontendPackageFiles(settings={}, options={}) {
-  const logoSource = window.__schoolLogoPackageDataUrl || settings.logo_url || STATIC_SCHOOL_ICON_SVG;
+  const logoSource = settings.logo_url || window.__schoolLogoPackageDataUrl || STATIC_SCHOOL_ICON_SVG;
   const img = await loadSchoolDeploymentImage(logoSource);
   const files = [];
   const iconBlobs = new Map();
@@ -4835,7 +4893,7 @@ function SchoolSettingsManager() {
   };
 
   return <div className="space-y-4">
-    <SectionHeader title="School Logo, Details and Personalization" subtitle="School Admin can update school details and manage all personalization controls from one compact section." />
+    <SectionHeader title="School Logo, Details and Personalization" subtitle="Manage the current school details, logo, themes, login screen, and personalization controls." />
     <div className="card p-4 md:p-5 max-w-6xl">
       <div className="grid xl:grid-cols-[1fr_1.2fr] gap-5 items-start">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
@@ -4858,8 +4916,8 @@ function SchoolSettingsManager() {
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
-              <div className="font-bold text-lg">Personalization (School Admin only)</div>
-              <div className="text-sm text-slate-500 mt-1">Login background, fonts, themes, and audio greeting controls now stay together here in a compact horizontal layout.</div>
+              <div className="font-bold text-lg">Personalization</div>
+              <div className="text-sm text-slate-500 mt-1">Login background, fonts, themes, and audio greeting controls.</div>
             </div>
             <button type="button" className="btn btn-primary" onClick={savePersonalization}>Save Personalization</button>
           </div>
@@ -6868,6 +6926,14 @@ function ChatManagement({ role, linkedId=null, initialReceiver='', embeddedView=
   );
 }
 
+
+if (['http:', 'https:'].includes(window.location.protocol)) {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
