@@ -162,6 +162,7 @@ const offlineStore = localforage.createInstance({ name: 'school_mgmt_final_v1' }
 const FAST_UI_MODE = true;
 
 const ROLE_LABELS = { superadmin: 'Super Admin', admin: 'School Admin', teacher: 'Teacher', student: 'Student', parent: 'Parent', accountant: 'Accounts Office Staff', principal: 'Principal' };
+const SCHOOL_CERTIFICATE_TYPES = ['Teacher Service Honor', 'Student Promotion', 'JHS 3 BECE Completion'];
 const QUALIFICATIONS = ['PhD', 'MSc Degree', 'Bachelor Degree', 'HND', 'Diploma', 'SHS'];
 const GENDERS = ['Male', 'Female'];
 const TRAINING_STATUS = ['Trained', 'Non-Trained'];
@@ -567,6 +568,7 @@ function normalizeCrossModuleConsistency(raw={}) {
     fees,
     termFeeSettings,
     archiveRecords,
+    schoolCertificates: safeArray(raw.schoolCertificates),
     salaryGrades,
     teacherPayroll,
     monthlySalaryPayments,
@@ -2365,7 +2367,7 @@ const SessionContext = React.createContext(null);
 
 const EMPTY_LIVE_DATA = {
   schoolSettings: defaultSchool,
-  principals: [], teachers: [], students: [], parents: [], accountStaff: [], classes: [], subjects: [], timetable: [], attendance: [], grades: [], fees: [], termFeeSettings: [], archiveRecords: [], salaryGrades: [], teacherPayroll: [], monthlySalaryPayments: [], credentials: [], chats: [], presenceRows: [],
+  principals: [], teachers: [], students: [], parents: [], accountStaff: [], classes: [], subjects: [], timetable: [], attendance: [], grades: [], fees: [], termFeeSettings: [], archiveRecords: [], schoolCertificates: [], salaryGrades: [], teacherPayroll: [], monthlySalaryPayments: [], credentials: [], chats: [], presenceRows: [],
   lmsCourses: [], lmsLessons: [], lmsLessonProgress: [], lmsAssignments: [], lmsAssignmentSubmissions: [], lmsQuizzes: [], lmsQuizQuestions: [], lmsQuizAttempts: [], lmsQuizAnswers: [], lmsResources: [], lmsAnnouncements: [], lmsActivity: [],
   presence: {
     admin: { online: false, name: 'School Admin' },
@@ -2543,7 +2545,7 @@ async function fetchOptionalTable(table) {
 async function fetchAllSchoolData() {
   if (!supabase) return seedData();
   await ensureSupabaseBrowserSession();
-  const [schoolSettingsRes, profiles, principalsRaw, accountStaffRaw, teachersRaw, studentsRaw, parentsRaw, parentLinksRaw, classAssignmentsRaw, subjectAssignmentsRaw, classes, subjects, timetableRaw, attendanceRaw, gradesRaw, feesRaw, termFeeSettingsRaw, archiveRecordsRaw, salaryGradesRaw, teacherPayrollRaw, monthlySalaryPaymentsRaw, credentialsRawInitial, chatsRaw, presenceRaw, lmsCoursesRaw, lmsLessonsRaw, lmsLessonProgressRaw, lmsAssignmentsRaw, lmsAssignmentSubmissionsRaw, lmsQuizzesRaw, lmsQuizQuestionsRaw, lmsQuizAttemptsRaw, lmsQuizAnswersRaw, lmsResourcesRaw, lmsAnnouncementsRaw, lmsActivityRaw] = await Promise.all([
+  const [schoolSettingsRes, profiles, principalsRaw, accountStaffRaw, teachersRaw, studentsRaw, parentsRaw, parentLinksRaw, classAssignmentsRaw, subjectAssignmentsRaw, classes, subjects, timetableRaw, attendanceRaw, gradesRaw, feesRaw, termFeeSettingsRaw, archiveRecordsRaw, schoolCertificatesRaw, salaryGradesRaw, teacherPayrollRaw, monthlySalaryPaymentsRaw, credentialsRawInitial, chatsRaw, presenceRaw, lmsCoursesRaw, lmsLessonsRaw, lmsLessonProgressRaw, lmsAssignmentsRaw, lmsAssignmentSubmissionsRaw, lmsQuizzesRaw, lmsQuizQuestionsRaw, lmsQuizAttemptsRaw, lmsQuizAnswersRaw, lmsResourcesRaw, lmsAnnouncementsRaw, lmsActivityRaw] = await Promise.all([
     supabase.from('school_settings').select('*').eq('id', 1).single(),
     fetchTable('profiles'),
     fetchTable('principals'),
@@ -2562,6 +2564,7 @@ async function fetchAllSchoolData() {
     fetchTable('fees'),
     fetchOptionalTable('term_fee_settings'),
     fetchOptionalTable('archive_records'),
+    fetchOptionalTable('school_certificates'),
     fetchOptionalTable('salary_grades'),
     fetchOptionalTable('teacher_payroll_details'),
     fetchOptionalTable('monthly_salary_payments'),
@@ -2631,6 +2634,7 @@ async function fetchAllSchoolData() {
       attendance: safeArray(row.attendance),
       fees: safeArray(row.fees)
     })),
+    schoolCertificates: safeArray(schoolCertificatesRaw),
     salaryGrades: (salaryGradesRaw || []),
     teacherPayroll: (teacherPayrollRaw || []),
     monthlySalaryPayments: (monthlySalaryPaymentsRaw || []),
@@ -2866,6 +2870,7 @@ function usePersistentSchoolData() {
       }
     }
     else if (key === 'archiveRecords') await syncSimpleTable('archive_records', prevItems, nextItems, item => ({ id: dbId(item.id), student_id: item.student_id || null, student_name: item.student_name || null, student_number: item.student_number || null, academic_year: item.academic_year || null, previous_class_id: item.previous_class_id || null, promoted_class_id: item.promoted_class_id || null, archived_at: item.archived_at || new Date().toISOString(), status: item.status || 'Archived', student_snapshot: clonePlain(item.student_snapshot || {}), grades: clonePlain(safeArray(item.grades)), attendance: clonePlain(safeArray(item.attendance)), fees: clonePlain(safeArray(item.fees)) }));
+    else if (key === 'schoolCertificates') await syncOptionalSimpleTable('school_certificates', prevItems, nextItems, item => ({ id: dbId(item.id), certificate_number: item.certificate_number || null, certificate_type: item.certificate_type || 'Teacher Service Honor', recipient_name: item.recipient_name || null, teacher_id: item.teacher_id || null, student_id: item.student_id || null, current_class_id: item.current_class_id || null, promoted_class_id: item.promoted_class_id || null, academic_year: item.academic_year || null, certificate_date: item.certificate_date || new Date().toISOString().slice(0,10), authorized_by: item.authorized_by || null, statement: item.statement || null, notes: item.notes || null, created_at: item.created_at || new Date().toISOString(), updated_at: new Date().toISOString() }));
     else if (key === 'salaryGrades') await syncSalaryGrades(prevItems, nextItems);
     else if (key === 'teacherPayroll') await syncTeacherPayrollDetails(prevItems, nextItems, data.teachers, data.salaryGrades);
     else if (key === 'monthlySalaryPayments') await syncMonthlySalaryPayments(prevItems, nextItems, data.teachers, data.salaryGrades, data.teacherPayroll);
@@ -3905,7 +3910,7 @@ function Sidebar() {
   const items = React.useMemo(() => {
     let navItems = [];
     if (session.role === 'superadmin') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['schooladmin', 'School Admin Credentials', 'user-shield'], ['access', 'Platform Access Control', 'lock'], ['license', 'License Management', 'certificate'], ['schoolsettings', 'School Settings', 'cog'], ['newschoolpackage', 'New School GitHub Package', 'box-open']];
-    else if (session.role === 'admin') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['license', 'License Plan Usage', 'certificate'], ['principals', 'Principal Management', 'crown'], ['teachers', 'Teachers Management', 'chalkboard-user'], ['students', 'Students Management', 'user-graduate'], ['parents', 'Parents Management', 'users'], ['accountstaff', 'Account Office Staff', 'calculator'], ['classes', 'Classes Management', 'layer-group'], ['subjects', 'Subjects Management', 'book'], ['lms', 'LMS Center', 'laptop-code'], ['timetable', 'Timetable Management', 'clock'], ['accounts', 'Accounts & Credentials', 'key'], ['archive', 'Archive Records', 'box-archive'], ['chat', 'System Chat', 'comments'], ['settings', 'School Logo & Details', 'cog']];
+    else if (session.role === 'admin') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['license', 'License Plan Usage', 'certificate'], ['principals', 'Principal Management', 'crown'], ['teachers', 'Teachers Management', 'chalkboard-user'], ['students', 'Students Management', 'user-graduate'], ['parents', 'Parents Management', 'users'], ['accountstaff', 'Account Office Staff', 'calculator'], ['classes', 'Classes Management', 'layer-group'], ['subjects', 'Subjects Management', 'book'], ['lms', 'LMS Center', 'laptop-code'], ['timetable', 'Timetable Management', 'clock'], ['accounts', 'Accounts & Credentials', 'key'], ['archive', 'Archive Records', 'box-archive'], ['certificates', 'Certificate Generator', 'certificate'], ['chat', 'System Chat', 'comments'], ['settings', 'School Logo & Details', 'cog']];
     else if (session.role === 'teacher') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['students', 'Student Management', 'users'], ['attendance', 'Attendance Records', 'calendar-check'], ['grades', 'Grades', 'star'], ['lms', 'LMS Workspace', 'laptop-code'], ['salary', 'Salary Record', 'wallet'], ['timetable', 'Timetable', 'clock'], ['chat', 'System Chat', 'comments'], ['profile', 'My Profile', 'image']];
     else if (session.role === 'student') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['grades', 'Grades', 'star'], ['attendance', 'Attendance Records', 'calendar'], ['fees', 'Fee Payments', 'money-bill-wave'], ['learning', 'My Learning', 'laptop-code'], ['timetable', 'Timetable', 'clock'], ['chat', 'System Chat', 'comments']];
     else if (session.role === 'parent') navItems = [['dashboard', 'Dashboard', 'tachometer-alt'], ['grades', 'Grades', 'star'], ['attendance', 'Attendance Records', 'calendar'], ['fees', 'Fee Payments', 'money-bill-wave'], ['learning', 'Learning Tracker', 'laptop-code'], ['chat', 'System Chat', 'comments']];
@@ -4258,11 +4263,199 @@ function AdminDashboard({ activeNav }) {
   if (activeNav === 'timetable') return <TimetableManagement adminMode={true} />;
   if (activeNav === 'accounts') return <UserCredentialsManagement />;
   if (activeNav === 'archive') return <ArchiveRecordsManagement />;
+  if (activeNav === 'certificates') return <SchoolCertificateGenerator />;
   if (activeNav === 'chat') return <ChatManagement role="admin" />;
   if (activeNav === 'settings') return <SchoolSettingsManager />;
   return null;
 }
 
+
+
+function schoolCertificateNumber(data, type='Teacher Service Honor') {
+  const code = type === 'Student Promotion' ? 'PROMO' : (type === 'JHS 3 BECE Completion' ? 'BECE' : 'SERV');
+  return `${numberPrefix(data.schoolSettings.school_name, code)}${String(nextGeneratedSequence(data.schoolCertificates, 'certificate_number', 1)).padStart(5, '0')}`;
+}
+function schoolPrincipalName(data) {
+  return safeArray(data.principals)[0]?.full_name || 'Head of School';
+}
+function schoolCertificateRecipient(data, record={}) {
+  if (record.certificate_type === 'Teacher Service Honor') {
+    const teacher = safeArray(data.teachers).find(item => item.id === record.teacher_id);
+    return teacher?.full_name || record.recipient_name || 'Teacher';
+  }
+  const student = safeArray(data.students).find(item => item.id === record.student_id);
+  return student?.full_name || record.recipient_name || 'Student';
+}
+function schoolClassLabel(data, classId='') {
+  return fullClassName(safeArray(data.classes).find(item => item.id === classId)) || '';
+}
+function schoolStudentCurrentClassId(data, studentId='') {
+  return safeArray(data.students).find(item => item.id === studentId)?.class_id || '';
+}
+function schoolCertificateStatement(data, record={}) {
+  const schoolName = data?.schoolSettings?.school_name || 'the school';
+  const recipient = schoolCertificateRecipient(data, record);
+  const academicYear = record.academic_year || 'the academic year';
+  if (record.certificate_type === 'Teacher Service Honor') {
+    return `This certificate is proudly presented to ${recipient} in honor and appreciation of dedicated service, professional commitment, and positive contribution to the learners and school community of ${schoolName}. The school recognizes this teacher's faithful work in shaping minds, building character, and strengthening the mission of quality education.`;
+  }
+  if (record.certificate_type === 'Student Promotion') {
+    const fromClass = schoolClassLabel(data, record.current_class_id) || 'the current class';
+    const toClass = schoolClassLabel(data, record.promoted_class_id) || 'the next class';
+    return `This certificate is awarded to ${recipient} in recognition of successful promotion from ${fromClass} to ${toClass} for ${academicYear}. ${schoolName} celebrates this achievement and encourages continued discipline, confidence, and excellence in the next stage of learning.`;
+  }
+  return `This certificate is awarded to ${recipient} for successfully completing Junior High School and writing the BECE, marking the end of the Junior High School cycle. ${schoolName} celebrates this important milestone and wishes the learner success while preparing for the next cycle of the academic journey, Senior High School.`;
+}
+function schoolCertificateTitle(type='Teacher Service Honor') {
+  if (type === 'Student Promotion') return 'Certificate of Promotion';
+  if (type === 'JHS 3 BECE Completion') return 'Certificate of BECE Completion';
+  return 'Certificate of Service Honor';
+}
+function schoolCertificateAccent(type='Teacher Service Honor') {
+  if (type === 'Student Promotion') return 'Recognizing academic promotion and readiness for the next class';
+  if (type === 'JHS 3 BECE Completion') return 'Marking the completion of Junior High School and transition toward Senior High School';
+  return 'Honoring dedicated teaching service and contribution to the school community';
+}
+function printSchoolCertificate(record, data) {
+  const settings = data.schoolSettings || defaultSchool;
+  const theme = THEME_OPTIONS[normalizeThemeChoice(settings.theme_choice || 'emerald')] || THEME_OPTIONS.emerald;
+  const issued = record.certificate_date || today();
+  const issueDate = new Date(`${issued}T00:00:00`).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const title = schoolCertificateTitle(record.certificate_type);
+  const accent = schoolCertificateAccent(record.certificate_type);
+  const recipient = schoolCertificateRecipient(data, record);
+  const statement = record.statement || schoolCertificateStatement(data, record);
+  const detailLine = [settings.address, settings.contact, settings.location].filter(Boolean).join(' | ');
+  const logoUrl = settings.logo_url || 'school-app-icon-512.png';
+  const signatureUrl = getPrincipalSignatureUrl(settings);
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>${escapeHtml(title)}</title><style>
+    @page { size: A4 landscape; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f8fafc; font-family: Georgia, 'Times New Roman', serif; color: #111827; }
+    .sheet { width: 100vw; height: 100vh; display: grid; place-items: center; padding: 22px; background: radial-gradient(circle at 50% 8%, #ffffff 0%, #f8fafc 58%, #e2e8f0 100%); }
+    .certificate { position: relative; width: min(1120px, calc(100vw - 44px)); aspect-ratio: 1.414/1; background: linear-gradient(135deg,#ffffff,#fdfcf7); border: 10px solid ${escapeHtml(theme.primary)}; outline: 2px solid #111827; outline-offset: -22px; padding: 42px 72px 34px; text-align: center; overflow: hidden; box-shadow: 0 30px 80px rgba(15,23,42,.18); }
+    .certificate:before { content: ""; position: absolute; inset: 32px; border: 1px solid rgba(15,23,42,.14); }
+    .watermark { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: 420px; max-width: 46%; opacity: .06; }
+    .content { position: relative; z-index: 1; min-height: 100%; display: flex; flex-direction: column; align-items: center; }
+    .logo { width: 76px; height: 76px; object-fit: contain; margin-bottom: 8px; }
+    .school { margin: 0; font-size: 32px; text-transform: uppercase; letter-spacing: .12em; color: #111827; }
+    .contact { margin: 7px 0 16px; color: #64748b; font-size: 14px; font-family: Arial, sans-serif; }
+    .title { margin: 8px 0 6px; font-size: 56px; line-height: 1; color: ${escapeHtml(theme.primary)}; }
+    .accent { display: inline-flex; padding: 8px 18px; border-radius: 999px; background: rgba(5,150,105,.1); color: ${escapeHtml(theme.primaryDark || theme.primary)}; font-size: 12px; text-transform: uppercase; font-weight: 800; letter-spacing: .1em; font-family: Arial, sans-serif; }
+    .presented { margin: 18px 0 4px; font-size: 18px; color: #475569; }
+    .recipient { margin: 0 0 12px; font-size: 58px; line-height: 1; color: #0f172a; border-bottom: 2px solid rgba(15,23,42,.24); padding: 0 24px 10px; min-width: 620px; }
+    .statement { max-width: 900px; margin: 0 auto; font-size: 18px; line-height: 1.55; color: #263238; }
+    .certno { margin-top: 10px; color: #64748b; font: 700 12px Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+    .signatures { margin-top: auto; width: 100%; display: grid; grid-template-columns: 220px 86px 260px; justify-content: center; align-items: end; gap: 36px; padding-top: 20px; }
+    .line { border-bottom: 2px solid #111827; height: 34px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font-weight: 800; white-space: nowrap; }
+    .label { margin-top: 6px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #64748b; font-family: Arial, sans-serif; }
+    .seal { width: 76px; height: 76px; border-radius: 50%; border: 2px solid rgba(5,150,105,.55); display: grid; place-items: center; color: rgba(15,23,42,.62); font: 800 9px Arial; letter-spacing: .12em; text-transform: uppercase; transform: rotate(-8deg); }
+    .signature { height: 70px; max-width: 235px; object-fit: contain; display: block; margin: 0 auto -8px; }
+    @media print { body { background: white; } .sheet { width: 297mm; height: 210mm; padding: 7mm; background: white; } .certificate { width: 283mm; height: 196mm; max-width: none; box-shadow: none; padding: 32px 62px 28px; } .title { font-size: 52px; } .recipient { font-size: 54px; } .statement { font-size: 16px; } }
+  </style></head><body><div class="sheet"><main class="certificate">
+    ${logoUrl ? `<img class="watermark" src="${escapeHtml(logoUrl)}" alt="">` : ''}
+    <div class="content">
+      ${logoUrl ? `<img class="logo" src="${escapeHtml(logoUrl)}" alt="School logo">` : ''}
+      <h1 class="school">${escapeHtml(settings.school_name || 'School Management System')}</h1>
+      <div class="contact">${escapeHtml(detailLine)}</div>
+      <h2 class="title">${escapeHtml(title)}</h2>
+      <div class="accent">${escapeHtml(accent)}</div>
+      <div class="presented">This certificate is presented to</div>
+      <h3 class="recipient">${escapeHtml(recipient)}</h3>
+      <p class="statement">${escapeHtml(statement)}</p>
+      <div class="certno">Certificate No: ${escapeHtml(record.certificate_number || '')}</div>
+      <div class="signatures">
+        <div><div class="line">${escapeHtml(issueDate)}</div><div class="label">Date Issued</div></div>
+        <div class="seal">Official<br>Seal</div>
+        <div>${signatureUrl ? `<img class="signature" src="${escapeHtml(signatureUrl)}" alt="Signature">` : ''}<div class="line">${escapeHtml(record.authorized_by || schoolPrincipalName(data))}</div><div class="label">Authorized Signature</div></div>
+      </div>
+    </div>
+  </main></div></body></html>`;
+  const win = window.open('', '_blank', 'width=1200,height=850');
+  if (!win) return;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { try { win.print(); } catch (e) {} }, 180);
+}
+function SchoolCertificateGenerator() {
+  const { data, updateCollection, notify } = React.useContext(DataContext);
+  const defaultForm = { certificate_type: 'Teacher Service Honor', teacher_id: '', student_id: '', current_class_id: '', promoted_class_id: '', academic_year: new Date().getFullYear().toString(), certificate_date: today(), authorized_by: schoolPrincipalName(data), notes: '' };
+  const [open, setOpen] = React.useState(false);
+  const [form, setForm] = React.useState(defaultForm);
+  const certificateRows = safeArray(data.schoolCertificates).slice().sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+  const selectedStudent = safeArray(data.students).find(student => student.id === form.student_id);
+  React.useEffect(() => {
+    if (form.student_id && selectedStudent?.class_id && !form.current_class_id) setForm(current => ({ ...current, current_class_id: selectedStudent.class_id }));
+  }, [form.student_id, selectedStudent?.class_id]);
+  const startCreate = type => {
+    setForm({ ...defaultForm, certificate_type: type || 'Teacher Service Honor', authorized_by: schoolPrincipalName(data) });
+    setOpen(true);
+  };
+  const save = async event => {
+    event.preventDefault();
+    const isTeacher = form.certificate_type === 'Teacher Service Honor';
+    if (isTeacher && !form.teacher_id) { notify('error', 'Select a teacher.'); return; }
+    if (!isTeacher && !form.student_id) { notify('error', 'Select a student.'); return; }
+    if (form.certificate_type === 'Student Promotion' && !form.promoted_class_id) { notify('error', 'Select the promoted class.'); return; }
+    const recipientName = isTeacher ? schoolCertificateRecipient(data, { ...form, certificate_type: form.certificate_type }) : (selectedStudent?.full_name || 'Student');
+    const payloadBase = {
+      ...form,
+      id: uid(),
+      certificate_number: schoolCertificateNumber(data, form.certificate_type),
+      recipient_name: recipientName,
+      current_class_id: form.certificate_type === 'Teacher Service Honor' ? '' : (form.current_class_id || schoolStudentCurrentClassId(data, form.student_id)),
+      promoted_class_id: form.certificate_type === 'Student Promotion' ? form.promoted_class_id : '',
+      certificate_date: form.certificate_date || today(),
+      authorized_by: form.authorized_by || schoolPrincipalName(data),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    const payload = { ...payloadBase, statement: schoolCertificateStatement(data, payloadBase) };
+    await updateCollection('schoolCertificates', rows => [payload, ...safeArray(rows)], { successMessage: 'Certificate generated successfully.', offlineSuccessMessage: 'Certificate generated locally and queued for sync.' });
+    setOpen(false);
+    setTimeout(() => printSchoolCertificate(payload, data), 120);
+  };
+  const remove = async row => {
+    if (!confirmDeleteAction('this certificate record')) return;
+    await updateCollection('schoolCertificates', rows => safeArray(rows).filter(item => item.id !== row.id), { successMessage: 'Certificate deleted successfully.' });
+  };
+  return <div className="space-y-4">
+    <SectionHeader title="Certificate Generator" subtitle="Generate teacher service honor certificates, student promotion certificates, and JHS 3 BECE completion certificates." actions={<div className="flex flex-wrap gap-2">{SCHOOL_CERTIFICATE_TYPES.map(type => <button key={type} type="button" className="btn btn-primary" onClick={() => startCreate(type)}><i className="fas fa-certificate mr-2"></i>{type}</button>)}</div>} />
+    <div className="grid-fit">
+      <div className="card p-5"><div className="text-sm font-bold text-slate-500">Teacher Service Honor</div><div className="text-2xl font-extrabold mt-1">{certificateRows.filter(row => row.certificate_type === 'Teacher Service Honor').length}</div><p className="text-xs text-slate-500 mt-2">Honors dedicated teachers and their contribution to the school community.</p></div>
+      <div className="card p-5"><div className="text-sm font-bold text-slate-500">Student Promotion</div><div className="text-2xl font-extrabold mt-1">{certificateRows.filter(row => row.certificate_type === 'Student Promotion').length}</div><p className="text-xs text-slate-500 mt-2">Recognizes learners promoted to the next class.</p></div>
+      <div className="card p-5"><div className="text-sm font-bold text-slate-500">JHS 3 BECE Completion</div><div className="text-2xl font-extrabold mt-1">{certificateRows.filter(row => row.certificate_type === 'JHS 3 BECE Completion').length}</div><p className="text-xs text-slate-500 mt-2">Marks completion of the Junior High School cycle and readiness for SHS.</p></div>
+    </div>
+    <Table columns={['Certificate No', 'Type', 'Recipient', 'Date', 'Authorized By', 'Actions']} rows={certificateRows} renderCell={(row, col) => {
+      if (col === 'Certificate No') return row.certificate_number;
+      if (col === 'Type') return row.certificate_type;
+      if (col === 'Recipient') return schoolCertificateRecipient(data, row);
+      if (col === 'Date') return row.certificate_date;
+      if (col === 'Authorized By') return row.authorized_by;
+      if (col === 'Actions') return <div className="flex flex-wrap gap-2"><button className="btn btn-outline !py-1.5" onClick={() => printSchoolCertificate(row, data)}><i className="fas fa-print mr-1"></i>Print</button><button className="btn btn-danger !py-1.5" onClick={() => remove(row)}><i className="fas fa-trash mr-1"></i>Delete</button></div>;
+      return '';
+    }} />
+    <Modal open={open} title="Generate Certificate" onClose={() => setOpen(false)} max="max-w-5xl">
+      <form onSubmit={save} className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Certificate Type"><select className="select" value={form.certificate_type} onChange={e => setForm({ ...defaultForm, certificate_type: e.target.value, authorized_by: schoolPrincipalName(data) })}>{SCHOOL_CERTIFICATE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</select></Field>
+          <Field label="Certificate Date"><input className="input" type="date" value={form.certificate_date || today()} onChange={e => setForm({ ...form, certificate_date: e.target.value })} required /></Field>
+          {form.certificate_type === 'Teacher Service Honor' && <Field label="Teacher"><select className="select" required value={form.teacher_id || ''} onChange={e => setForm({ ...form, teacher_id: e.target.value })}><option value="">Select teacher</option>{safeArray(data.teachers).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.full_name}</option>)}</select></Field>}
+          {form.certificate_type !== 'Teacher Service Honor' && <Field label="Student"><select className="select" required value={form.student_id || ''} onChange={e => { const currentClassId = schoolStudentCurrentClassId(data, e.target.value); setForm({ ...form, student_id: e.target.value, current_class_id: currentClassId }); }}><option value="">Select student</option>{safeArray(data.students).map(student => <option key={student.id} value={student.id}>{student.full_name} {student.student_number ? `(${student.student_number})` : ''}</option>)}</select></Field>}
+          {form.certificate_type !== 'Teacher Service Honor' && <Field label={form.certificate_type === 'Student Promotion' ? 'Current Class' : 'Completion Class'}><select className="select" value={form.current_class_id || ''} onChange={e => setForm({ ...form, current_class_id: e.target.value })}><option value="">Select class</option>{safeArray(data.classes).map(cls => <option key={cls.id} value={cls.id}>{fullClassName(cls)}</option>)}</select></Field>}
+          {form.certificate_type === 'Student Promotion' && <Field label="Promoted To"><select className="select" required value={form.promoted_class_id || ''} onChange={e => setForm({ ...form, promoted_class_id: e.target.value })}><option value="">Select next class</option>{safeArray(data.classes).map(cls => <option key={cls.id} value={cls.id}>{fullClassName(cls)}</option>)}</select></Field>}
+          {form.certificate_type !== 'Teacher Service Honor' && <Field label="Academic Year"><input className="input" value={form.academic_year || ''} onChange={e => setForm({ ...form, academic_year: e.target.value })} placeholder="2026" /></Field>}
+          <Field label="Authorized By"><input className="input" value={form.authorized_by || ''} onChange={e => setForm({ ...form, authorized_by: e.target.value })} /></Field>
+          <div className="md:col-span-2"><Field label="Notes"><textarea className="textarea" value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })}></textarea></Field></div>
+        </div>
+        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700"><b>Certificate statement preview:</b><br />{schoolCertificateStatement(data, { ...form, recipient_name: form.certificate_type === 'Teacher Service Honor' ? schoolCertificateRecipient(data, form) : (selectedStudent?.full_name || 'Student') })}</div>
+        <div className="flex justify-end gap-2"><button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary"><i className="fas fa-certificate mr-2"></i>Generate and Print</button></div>
+      </form>
+    </Modal>
+  </div>;
+}
 
 function ArchiveRecordsManagement() {
   const { data, updateCollection, removeArchiveRecord, notify } = React.useContext(DataContext);
@@ -4930,7 +5123,7 @@ function SchoolSettingsManager() {
     <SectionHeader title="School Logo, Details and Appearance" subtitle="Manage the current school details, logo, themes, and login screen." />
     <div className="card p-4 md:p-5 w-full max-w-none">
       <div className="grid lg:grid-cols-2 gap-4 items-start">
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className={`space-y-4 rounded-2xl border border-slate-200 bg-white p-4 ${isSuperAdmin ? '' : 'lg:col-span-2'}`}>
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
               <div className="font-bold text-lg">School Details</div>
