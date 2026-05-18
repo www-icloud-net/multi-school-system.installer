@@ -112,10 +112,25 @@
     .toast-success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
     .toast-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
     .toast-info { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
-    .busy-backdrop { position: fixed; inset: 0; background: rgba(255,255,255,.55); z-index: 80; display: flex; align-items: center; justify-content: center; }
-    .busy-card { background: white; border: 1px solid #e5e7eb; border-radius: 1rem; padding: 1rem 1.25rem; box-shadow: 0 18px 40px rgba(15,23,42,.14); display: flex; align-items: center; gap: .85rem; }
-    .spinner { width: 22px; height: 22px; border-radius: 999px; border: 3px solid #d1fae5; border-top-color: #059669; animation: spin 1s linear infinite; }
+    .busy-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.34); backdrop-filter: blur(8px); z-index: 80; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .busy-card { background: rgba(255,255,255,.94); border: 1px solid rgba(255,255,255,.72); border-radius: 1.35rem; padding: 1.1rem 1.25rem; box-shadow: 0 24px 70px rgba(15,23,42,.24); display: flex; align-items: center; gap: .9rem; min-width: min(360px, 92vw); }
+    .spinner { width: 34px; height: 34px; border-radius: 999px; border: 4px solid color-mix(in srgb, var(--theme-primary) 18%, white); border-top-color: var(--theme-primary); border-right-color: var(--theme-primary-dark); animation: spin .8s linear infinite; box-shadow: 0 0 0 6px color-mix(in srgb, var(--theme-primary) 8%, transparent); flex: 0 0 34px; }
+    .app-loading-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.25rem; position: relative; overflow: hidden; background: radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--theme-primary) 18%, white) 0, transparent 32%), radial-gradient(circle at 80% 80%, color-mix(in srgb, var(--theme-primary-dark) 16%, white) 0, transparent 34%), linear-gradient(135deg, #f8fafc 0%, #eef2ff 48%, #ecfdf5 100%); }
+    .app-loading-shell::before { content: ''; position: absolute; width: 28rem; height: 28rem; border-radius: 999px; background: color-mix(in srgb, var(--theme-primary) 15%, transparent); filter: blur(44px); transform: translate(-12rem, -10rem); animation: loadingFloat 5s ease-in-out infinite alternate; }
+    .app-loading-shell::after { content: ''; position: absolute; width: 22rem; height: 22rem; border-radius: 999px; background: color-mix(in srgb, var(--theme-primary-dark) 13%, transparent); filter: blur(48px); transform: translate(12rem, 10rem); animation: loadingFloat 6s ease-in-out infinite alternate-reverse; }
+    .app-loading-card { width: min(430px, 94vw); position: relative; z-index: 1; text-align: center; border-radius: 1.75rem; padding: 2rem 1.65rem; background: rgba(255,255,255,.9); border: 1px solid rgba(255,255,255,.72); box-shadow: 0 28px 80px rgba(15,23,42,.18); backdrop-filter: blur(18px); }
+    .app-loading-logo { position: relative; margin: 0 auto; width: 76px; height: 76px; border-radius: 1.35rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-dark)); color: #fff; font-size: 2rem; box-shadow: 0 18px 40px color-mix(in srgb, var(--theme-primary) 35%, transparent); }
+    .app-loading-orbit { position: absolute; inset: -8px; border-radius: 1.65rem; border: 2px solid transparent; border-top-color: color-mix(in srgb, var(--theme-primary) 70%, white); border-right-color: color-mix(in srgb, var(--theme-primary-dark) 70%, white); animation: spin 1.1s linear infinite; }
+    .app-loading-progress { height: .55rem; border-radius: 999px; background: #e5e7eb; overflow: hidden; box-shadow: inset 0 1px 3px rgba(15,23,42,.08); }
+    .app-loading-progress::before { content: ''; display: block; height: 100%; width: 42%; border-radius: 999px; background: linear-gradient(90deg, var(--theme-primary), var(--theme-primary-dark)); animation: loadingSlide 1.45s ease-in-out infinite; }
+    .app-loading-dots { display: inline-flex; gap: .35rem; align-items: center; justify-content: center; }
+    .app-loading-dots span { width: .45rem; height: .45rem; border-radius: 999px; background: var(--theme-primary); opacity: .35; animation: loadingPulse 1s ease-in-out infinite; }
+    .app-loading-dots span:nth-child(2) { animation-delay: .15s; }
+    .app-loading-dots span:nth-child(3) { animation-delay: .3s; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes loadingSlide { 0% { transform: translateX(-105%); } 50% { transform: translateX(80%); } 100% { transform: translateX(245%); } }
+    @keyframes loadingPulse { 0%, 80%, 100% { transform: scale(.82); opacity: .32; } 40% { transform: scale(1); opacity: 1; } }
+    @keyframes loadingFloat { from { scale: .96; } to { scale: 1.08; } }
     @media print {
       .no-print { display: none !important; }
       body { background: white; }
@@ -1203,7 +1218,7 @@ function buildStudentGradeReportHtml({ school, student, classLabel, term, year, 
         ${logoHtml}
         <div class="school-center">
           <div class="school-name">${school.school_name || 'School Management System'}</div>
-          <div class="school-sub">${[school.address, school.location].filter(Boolean).join(' â€¢ ') || 'Student End of Semester Report'}</div>
+          <div class="school-sub">${[school.address, school.location].filter(Boolean).join(' | ') || 'Student End of Semester Report'}</div>
           <div class="school-sub">${school.contact || ''}</div>
         </div>
         ${logoHtml}
@@ -1280,7 +1295,7 @@ function openStudentGradeReportPrint(payload) {
 function getSchoolPrintIdentity(school={}) {
   return {
     name: school?.school_name?.trim() || 'School Management System',
-    addressLine: [school?.address, school?.location].filter(Boolean).join(' â€¢ '),
+    addressLine: [school?.address, school?.location].filter(Boolean).join(' | '),
     contact: school?.contact || '',
     logoUrl: school?.logo_url || ''
   };
@@ -3465,7 +3480,11 @@ function Table({ columns, rows, renderCell }) {
   </div>;
 }
 function ToastStack({ notifications, onDismiss }) { return <div className="toast-stack no-print">{notifications.map(note => <div key={note.id} className={`toast toast-${note.type || "info"}`}><div className="flex items-start justify-between gap-3"><div className="text-sm font-medium">{note.message}</div><button onClick={() => onDismiss(note.id)} className="text-slate-400 hover:text-slate-700"><i className="fas fa-times"></i></button></div></div>)}</div>; }
-function BusyOverlay({ text }) { if (!text) return null; return <div className="busy-backdrop no-print"><div className="busy-card"><div className="spinner"></div><div className="text-sm font-semibold text-slate-700">{text}</div></div></div>; }
+function BusyOverlay({ text }) { if (!text) return null; return <div className="busy-backdrop no-print"><div className="busy-card"><div className="spinner"></div><div><div className="text-sm font-extrabold text-slate-800">Processing request</div><div className="text-sm font-semibold text-slate-600 mt-0.5">{text}</div></div></div></div>; }
+function AppLoadingScreen() {
+  const schoolName = defaultSchool?.school_name || 'School Management System';
+  return <div className="app-loading-shell"><div className="app-loading-card"><div className="app-loading-logo"><i className="fas fa-school"></i><span className="app-loading-orbit"></span></div><div className="mt-5 text-xl font-extrabold text-slate-900">Preparing your school portal</div><div className="mt-1 text-sm font-semibold text-slate-500">{schoolName}</div><div className="app-loading-progress mt-6"></div><div className="app-loading-dots mt-5"><span></span><span></span><span></span></div><div className="mt-3 text-xs font-extrabold uppercase tracking-[.22em] text-slate-400">Loading system</div></div></div>;
+}
 
 function OfflineStateBanner({ state, onSync }) {
   if (!state || (state.isOnline && !state.pendingCount && !state.syncing)) return null;
@@ -3494,7 +3513,7 @@ function AppFooter() {
   return (
     <footer className="system-footer px-3 md:px-5 py-3 text-center text-xs md:text-sm">
       <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 px-4 py-3" style={{ background: 'color-mix(in srgb, var(--theme-footer-bg) 88%, white 12%)' }}>
-        <div className="font-semibold tracking-wide leading-snug">Â© {year} {schoolName}. All rights reserved.</div>
+        <div className="font-semibold tracking-wide leading-snug">&copy; {year} {schoolName}. All rights reserved.</div>
       </div>
     </footer>
   );
@@ -3723,7 +3742,7 @@ function App() {
     setForcePasswordModal(false);
   }, [session.credentialId, store]);
 
-  if (!store.loaded || !authReady) return <div className="p-10 text-center">Loading system...</div>;
+  if (!store.loaded || !authReady) return <AppLoadingScreen />;
   return <DataContext.Provider value={store}><SessionContext.Provider value={{ session, setSession, activeNav, setActiveNav, loginWithCredentials, logout, forcePasswordModal, setForcePasswordModal, changeOwnPassword, themeChoice, setThemeChoice, mobileNavOpen, setMobileNavOpen }}><div className="min-h-screen flex flex-col"><Header /><OfflineStateBanner state={store.offlineState} onSync={store.flushPendingChanges} /><LicenseExpiryNotice /><div className="flex flex-1 min-h-0">{session.role && <Sidebar />}<main className="flex-1 p-3 md:p-6 overflow-x-hidden">{!session.role ? <LoginScreen /> : <DashboardRouter />}</main></div><AppFooter /><ForcePasswordChangeModal open={!!session.role && session.role !== 'superadmin' && !isWholeSchoolPortalRestricted(session.role, store.data.schoolSettings) && forcePasswordModal} onSave={changeOwnPassword} /><BusyOverlay text={store.busyText} /><ToastStack notifications={store.notifications} onDismiss={store.dismissNotification} /></div></SessionContext.Provider></DataContext.Provider>;
 }
 
@@ -3744,7 +3763,7 @@ function Header() {
       setRefreshing(false);
     }
   }, [flushPendingChanges, notify, refreshing, reloadData]);
-  return <header className="sticky-header px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-3 no-print"><div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">{session.role && <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="md:hidden w-11 h-11 rounded-xl border header-theme-button flex items-center justify-center shrink-0" aria-label="Open navigation menu"><i className={`fas ${mobileNavOpen ? 'fa-times' : 'fa-bars'} text-slate-700`}></i></button>}{data.schoolSettings.logo_url ? <img src={data.schoolSettings.logo_url} className="w-12 h-12 rounded-full object-cover border shrink-0" /> : <div className="w-12 h-12 rounded-full bg-[var(--theme-primary)] text-white flex items-center justify-center shrink-0"><i className="fas fa-school"></i></div>}<div className="min-w-0"><h1 className="text-base sm:text-lg md:text-2xl font-extrabold text-[color:var(--theme-header-text)] mobile-header-title break-words">{data.schoolSettings.school_name}</h1><p className="text-[11px] md:text-xs leading-tight opacity-80">{[data.schoolSettings.address, data.schoolSettings.contact, data.schoolSettings.location].filter(Boolean).join(' â€¢ ') || 'School Management System'}</p></div></div><div className="flex items-center gap-2 md:gap-3 shrink-0">{session.role && <><span className="pill header-theme-chip hidden sm:inline-flex"><i className="fas fa-user-shield"></i> {ROLE_LABELS[session.role]}</span><button type="button" onClick={handleRefresh} disabled={refreshing} className="btn btn-outline header-theme-button px-3 md:px-4 disabled:opacity-60 disabled:cursor-not-allowed" aria-label="Refresh system data" title="Refresh system data"><i className={`fas ${refreshing ? 'fa-spinner fa-spin' : 'fa-rotate-right'} md:mr-2`}></i><span className="hidden md:inline">Refresh</span></button></>}</div></header>;
+  return <header className="sticky-header px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-3 no-print"><div className="flex items-center gap-2.5 md:gap-3 min-w-0 flex-1">{session.role && <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="md:hidden w-11 h-11 rounded-xl border header-theme-button flex items-center justify-center shrink-0" aria-label="Open navigation menu"><i className={`fas ${mobileNavOpen ? 'fa-times' : 'fa-bars'} text-slate-700`}></i></button>}{data.schoolSettings.logo_url ? <img src={data.schoolSettings.logo_url} className="w-12 h-12 rounded-full object-cover border shrink-0" /> : <div className="w-12 h-12 rounded-full bg-[var(--theme-primary)] text-white flex items-center justify-center shrink-0"><i className="fas fa-school"></i></div>}<div className="min-w-0"><h1 className="text-base sm:text-lg md:text-2xl font-extrabold text-[color:var(--theme-header-text)] mobile-header-title break-words">{data.schoolSettings.school_name}</h1><p className="text-[11px] md:text-xs leading-tight opacity-80">{[data.schoolSettings.address, data.schoolSettings.contact, data.schoolSettings.location].filter(Boolean).join(' | ') || 'School Management System'}</p></div></div><div className="flex items-center gap-2 md:gap-3 shrink-0">{session.role && <><span className="pill header-theme-chip hidden sm:inline-flex"><i className="fas fa-user-shield"></i> {ROLE_LABELS[session.role]}</span><button type="button" onClick={handleRefresh} disabled={refreshing} className="btn btn-outline header-theme-button px-3 md:px-4 disabled:opacity-60 disabled:cursor-not-allowed" aria-label="Refresh system data" title="Refresh system data"><i className={`fas ${refreshing ? 'fa-spinner fa-spin' : 'fa-rotate-right'} md:mr-2`}></i><span className="hidden md:inline">Refresh</span></button></>}</div></header>;
 }
 
 function LoginScreen() {
@@ -4211,7 +4230,7 @@ function SuperAdminDashboard({ activeNav }) {
     await setSchoolSettings(current => ({ ...current, school_license_plan: '', school_license_label: 'No license issued', school_license_code: '', school_license_status: 'Not Issued', school_license_issued_at: '', school_license_activated_at: '', school_license_expires_at: '', school_license_last_checked_at: new Date().toISOString(), school_admin_access_locked: false, platform_access_locked: false }));
     notify('success', 'School Admin license record cleared.');
   };
-  const credentialsPanel = <div className="card p-5 space-y-4"><SectionHeader title="Issue School Admin Credentials" subtitle="Only the Super Admin can issue or reset the School Admin login credentials." actions={<button type="button" onClick={generateAdminCredential} className="btn btn-outline"><i className="fas fa-wand-magic-sparkles mr-2"></i>Generate Unique Credentials</button>} /><form onSubmit={saveSchoolAdminCredential} className="grid md:grid-cols-[1fr_1fr_220px_auto] gap-4 items-end"><Field label="School Admin Username"><input className="input" value={credentialForm.username} onChange={e => setCredentialForm({ ...credentialForm, username: e.target.value })} /></Field><Field label="School Admin Password"><input className="input" value={credentialForm.temporary_password} onChange={e => setCredentialForm({ ...credentialForm, temporary_password: e.target.value })} /></Field><Field label="Force Password Change"><select className="select" value={credentialForm.force_password_change} onChange={e => setCredentialForm({ ...credentialForm, force_password_change: e.target.value })}>{FORCE_PASSWORD_CHANGE.map(x => <option key={x} value={x}>{x}</option>)}</select></Field><button className="btn btn-primary" type="submit">Save Credentials</button></form><div className="flex flex-wrap gap-2"><button className="btn btn-outline" type="button" onClick={resetAdminPassword}><i className="fas fa-key mr-2"></i>Reset School Admin Password Only</button></div><div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm"><b>Current School Admin:</b> {adminCredential.username} <span className="mx-2">â€¢</span> <b>Password:</b> {adminCredential.temporary_password} <span className="mx-2">â€¢</span> <b>Force Password Change:</b> {resolveForcePasswordChoice(adminCredential.force_password_change)}</div></div>;
+  const credentialsPanel = <div className="card p-5 space-y-4"><SectionHeader title="Issue School Admin Credentials" subtitle="Only the Super Admin can issue or reset the School Admin login credentials." actions={<button type="button" onClick={generateAdminCredential} className="btn btn-outline"><i className="fas fa-wand-magic-sparkles mr-2"></i>Generate Unique Credentials</button>} /><form onSubmit={saveSchoolAdminCredential} className="grid md:grid-cols-[1fr_1fr_220px_auto] gap-4 items-end"><Field label="School Admin Username"><input className="input" value={credentialForm.username} onChange={e => setCredentialForm({ ...credentialForm, username: e.target.value })} /></Field><Field label="School Admin Password"><input className="input" value={credentialForm.temporary_password} onChange={e => setCredentialForm({ ...credentialForm, temporary_password: e.target.value })} /></Field><Field label="Force Password Change"><select className="select" value={credentialForm.force_password_change} onChange={e => setCredentialForm({ ...credentialForm, force_password_change: e.target.value })}>{FORCE_PASSWORD_CHANGE.map(x => <option key={x} value={x}>{x}</option>)}</select></Field><button className="btn btn-primary" type="submit">Save Credentials</button></form><div className="flex flex-wrap gap-2"><button className="btn btn-outline" type="button" onClick={resetAdminPassword}><i className="fas fa-key mr-2"></i>Reset School Admin Password Only</button></div><div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm"><b>Current School Admin:</b> {adminCredential.username} <span className="mx-2">|</span> <b>Password:</b> {adminCredential.temporary_password} <span className="mx-2">|</span> <b>Force Password Change:</b> {resolveForcePasswordChoice(adminCredential.force_password_change)}</div></div>;
   const accessPanel = <div className="card p-5 space-y-4"><SectionHeader title="Platform-Level Access Control" subtitle="Locking access fades and blocks School Admin plus all issued user portal navigation. Login and logout remain available; only the School Admin license activation section remains available." /><div className="grid-fit"><StatCard label="School Admin Access" value={restricted ? 'Locked' : 'Unlocked'} icon={restricted ? 'lock' : 'unlock'} accent={restricted ? 'rose' : 'emerald'} /><StatCard label="License Status" value={license.status} icon="certificate" accent={license.active ? 'emerald' : 'amber'} /><StatCard label="License Plan" value={license.planLabel} icon="calendar-check" accent="blue" /></div><div className="flex flex-wrap gap-3"><button type="button" className="btn btn-danger" onClick={() => setAdminLock(true)}><i className="fas fa-lock mr-2"></i>Lock School Admin Full Access</button><button type="button" className="btn btn-primary" onClick={() => setAdminLock(false)}><i className="fas fa-unlock mr-2"></i>Unlock School Admin Full Access</button></div></div>;
   const licensePanel = <div className="space-y-4"><LicenseSummaryCard settings={data.schoolSettings} /><div className="card p-5 space-y-4"><SectionHeader title="Issue License for School Admin Operation" subtitle="Choose a license plan and generate the code the School Admin must activate under License Plan Usage." /><form onSubmit={issueLicense} className="grid md:grid-cols-[1fr_auto] gap-4 items-end"><Field label="License Plan"><select className="select" value={licensePlan} onChange={e => setLicensePlan(e.target.value)}>{Object.entries(LICENSE_PLAN_OPTIONS).map(([key, plan]) => <option key={key} value={key}>{plan.label}</option>)}</select></Field><button type="submit" className="btn btn-primary"><i className="fas fa-certificate mr-2"></i>Generate and Issue License</button></form><div className="flex flex-wrap gap-2"><button type="button" className="btn btn-outline" onClick={clearLicense}><i className="fas fa-trash mr-2"></i>Clear License</button></div></div></div>;
   if (activeNav === 'schooladmin') return credentialsPanel;
@@ -4909,8 +4928,8 @@ function SchoolSettingsManager() {
 
   return <div className="space-y-4">
     <SectionHeader title="School Logo, Details and Appearance" subtitle="Manage the current school details, logo, themes, and login screen." />
-    <div className="card p-4 md:p-5 max-w-6xl">
-      <div className="grid xl:grid-cols-[1fr_1.2fr] gap-5 items-start">
+    <div className="card p-4 md:p-5 w-full max-w-none">
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
@@ -4942,7 +4961,7 @@ function SchoolSettingsManager() {
           </form>
         </div>}
 
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
               <div className="font-bold text-lg">Appearance</div>
@@ -4954,7 +4973,7 @@ function SchoolSettingsManager() {
           <div className="grid lg:grid-cols-[1.1fr_.9fr] gap-4 items-start border-b border-slate-200 pb-4">
             <div className="space-y-3">
               <LoginBackgroundEditorInput label="Login Screen Background Image" storageFolder="login-background" value={form.login_background_url || ''} onChange={v => setForm({ ...form, login_background_url: v })} />
-              <div className="theme-preview-swatch relative min-h-[140px]" style={form.login_background_url ? { backgroundImage: `linear-gradient(rgba(15,23,42,.42), rgba(15,23,42,.30)), url(${form.login_background_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: 'linear-gradient(135deg, #dbe4ee 0%, #94a3b8 50%, #475569 100%)' }}>
+              <div className="theme-preview-swatch relative min-h-[120px]" style={form.login_background_url ? { backgroundImage: `linear-gradient(rgba(15,23,42,.42), rgba(15,23,42,.30)), url(${form.login_background_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: 'linear-gradient(135deg, #dbe4ee 0%, #94a3b8 50%, #475569 100%)' }}>
                 <div className="absolute inset-0 p-4 flex flex-col justify-between text-white">
                   <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] backdrop-blur">Login Preview</div>
                   <div>
@@ -4991,9 +5010,15 @@ function SchoolSettingsManager() {
             </div>
           </div>
 
-          <div className="space-y-3 border-b border-slate-200 pb-4">
-            <div className="text-sm font-semibold text-slate-700">Quick Theme Buttons</div>
-            <div className="flex flex-wrap gap-3">{Object.entries(THEME_OPTIONS).map(([key, val]) => <button key={key} type="button" onClick={() => previewTheme(key)} className={`px-4 py-2.5 rounded-xl border ${themeChoice === key ? 'ring-2 ring-offset-2' : ''}`} style={{ background: val.primarySoft, borderColor: val.primary }}><span className="inline-flex items-center gap-2"><span className="w-4 h-4 rounded-full" style={{ background: val.primary }}></span>{val.label}</span></button>)}</div>
+          <div className="grid md:grid-cols-[minmax(220px,360px)_1fr] gap-4 items-end border-b border-slate-200 pb-4">
+            <Field label="Quick Theme Preset"><select className="select" value={themeChoice} onChange={e => previewTheme(e.target.value)}>{Object.entries(THEME_OPTIONS).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></Field>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 flex items-center gap-3 min-h-[54px]">
+              <span className="w-9 h-9 rounded-xl shrink-0 border border-white shadow-sm" style={{ background: (THEME_OPTIONS[themeChoice] || THEME_OPTIONS.emerald).primary }}></span>
+              <div>
+                <div className="text-sm font-extrabold text-slate-800">{(THEME_OPTIONS[themeChoice] || THEME_OPTIONS.emerald).label}</div>
+                <div className="text-xs text-slate-500">Choose a preset from the dropdown, then save appearance.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -6025,7 +6050,7 @@ function FeesStatement() {
   const printStatement = () => openRecordsPrint({
     school: data.schoolSettings,
     title: 'Fees Statement Report',
-    subtitle: `${classId ? `Filtered Class: ${fullClassName(data.classes.find(c => c.id === classId))}` : 'All Classes'} â€¢ Total Students: ${rows.length}`,
+    subtitle: `${classId ? `Filtered Class: ${fullClassName(data.classes.find(c => c.id === classId))}` : 'All Classes'} | Total Students: ${rows.length}`,
     columns: ['Student Name','Class','Initial Fees','Credit Used','Net Due','Total Paid','Outstanding','Credit Balance','Statement'],
     rows: rows.map(row => ({
       'Student Name': row.full_name || '',
@@ -6226,7 +6251,7 @@ function PrincipalDashboard({ activeNav }) {
             <div className="space-y-2">
               {academicUpdateByClass.length ? academicUpdateByClass.map(item => <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl bg-white border border-indigo-100 px-3 py-2">
                 <span className="text-sm font-semibold text-slate-700 truncate">{item.name}</span>
-                <span className="text-xs font-bold text-indigo-700">{item.count} records â€¢ {item.average}% avg.</span>
+                <span className="text-xs font-bold text-indigo-700">{item.count} records | {item.average}% avg.</span>
               </div>) : <div className="text-sm text-slate-500 bg-white border rounded-xl px-3 py-2">No published academic updates yet.</div>}
             </div>
           </div>
@@ -6286,7 +6311,7 @@ function PrincipalStudents() {
   const printStudents = () => openRecordsPrint({
     school: data.schoolSettings,
     title: 'Student Records Report',
-    subtitle: `${filterClass ? `Filtered Class: ${fullClassName(data.classes.find(c => c.id === filterClass))}` : 'All Classes'} â€¢ Total Students: ${rows.length}`,
+    subtitle: `${filterClass ? `Filtered Class: ${fullClassName(data.classes.find(c => c.id === filterClass))}` : 'All Classes'} | Total Students: ${rows.length}`,
     columns: ['Student No','Full Name','Assigned Class','Gender','Date of Birth','Parent Full Name','Parent Contact','Promotion Status','Account'],
     rows: rows.map(row => {
       const promotion = evaluatePromotion(data, row, promotionYear);
