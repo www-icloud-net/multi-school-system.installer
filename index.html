@@ -4941,6 +4941,9 @@ function buildDeployableSchoolIndexHtml(settings={}, options={}) {
   const shortName = schoolDeploymentShortName(schoolName, options.app_short_name);
   const theme = THEME_OPTIONS[normalizeThemeChoice(settings.theme_choice || 'emerald')] || THEME_OPTIONS.emerald;
   const cacheTag = `${schoolDeploymentSlug(schoolName)}-${Date.now()}`;
+  const outputSupabaseUrl = String(options.supabase_url || '').trim();
+  const outputSupabaseAnonKey = String(options.supabase_anon_key || '').trim();
+  if (!outputSupabaseUrl || !outputSupabaseAnonKey) throw new Error('Enter and save the new school Supabase Project URL and anon key before generating the package.');
   const cloneDoc = document.documentElement.cloneNode(true);
   cloneDoc.removeAttribute('style');
   const root = cloneDoc.querySelector('#root');
@@ -4983,11 +4986,20 @@ function buildDeployableSchoolIndexHtml(settings={}, options={}) {
   cloneDoc.querySelectorAll('link[rel="icon"][sizes="512x512"]').forEach(link => link.setAttribute('href', `school-app-icon-512.png?v=${cacheTag}`));
   cloneDoc.querySelectorAll('link[rel="apple-touch-icon"]').forEach(link => link.setAttribute('href', `school-app-icon-180.png?v=${cacheTag}`));
   cloneDoc.querySelectorAll('link[rel="shortcut icon"]').forEach(link => link.setAttribute('href', `favicon.ico?v=${cacheTag}`));
+  const supabaseUrlLine = `const SUPABASE_URL = ${schoolJsLiteral(outputSupabaseUrl)};`;
+  const supabaseAnonKeyLine = `const SUPABASE_ANON_KEY = ${schoolJsLiteral(outputSupabaseAnonKey)};`;
+  cloneDoc.querySelectorAll('script[type="text/babel"]').forEach(script => {
+    let code = script.textContent || '';
+    code = code.replace(/const\s+SUPABASE_URL\s*=\s*(['"`])[\s\S]*?\1\s*;/, supabaseUrlLine);
+    code = code.replace(/const\s+SUPABASE_ANON_KEY\s*=\s*(['"`])[\s\S]*?\1\s*;/, supabaseAnonKeyLine);
+    script.textContent = code;
+  });
   let html = '<!DOCTYPE html>\n' + cloneDoc.outerHTML;
-  const outputSupabaseUrl = String(options.supabase_url || '').trim();
-  const outputSupabaseAnonKey = String(options.supabase_anon_key || '').trim();
-  html = html.replace(/const SUPABASE_URL = ['"][\s\S]*?['"];?/m, `const SUPABASE_URL = ${schoolJsLiteral(outputSupabaseUrl)};`);
-  html = html.replace(/const SUPABASE_ANON_KEY = ['"][\s\S]*?['"];?/m, `const SUPABASE_ANON_KEY = ${schoolJsLiteral(outputSupabaseAnonKey)};`);
+  html = html.replace(/const\s+SUPABASE_URL\s*=\s*(['"`])[\s\S]*?\1\s*;/m, supabaseUrlLine);
+  html = html.replace(/const\s+SUPABASE_ANON_KEY\s*=\s*(['"`])[\s\S]*?\1\s*;/m, supabaseAnonKeyLine);
+  if (!html.includes(supabaseUrlLine) || !html.includes(supabaseAnonKeyLine)) {
+    throw new Error('The new school Supabase credentials could not be injected into the generated index.html.');
+  }
   html = html.replace(/school_name:\s*['"][\s\S]*?['"]/, `school_name: ${schoolJsLiteral(schoolName)}`);
   html = html.replace(/address:\s*['"][\s\S]*?['"]/, `address: ${schoolJsLiteral(settings.address || '')}`);
   html = html.replace(/contact:\s*['"][\s\S]*?['"]/, `contact: ${schoolJsLiteral(settings.contact || '')}`);
