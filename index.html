@@ -270,7 +270,7 @@ function backendCompatibleSchoolThemePayload(payload) {
   };
 }
 
-const defaultSchool = { school_name: 'Wood-World Missions Int. School', address: '', contact: '', location: '', logo_url: '', theme_choice: 'emerald', header_theme_choice: 'softWhite', footer_theme_choice: 'midnight', login_background_url: '', font_choice: 'inter', principal_signature_url: '', audio_greeting_enabled: true, login_greeting_template: 'Welcome {firstName}, You may proceed.', logout_greeting_message: 'Goodbye, Nice having you on board.', failed_login_greeting_message: 'Login fails, please verify your identity carefully or contact your school IT department to ratify the issue.', platform_access_locked: false, school_admin_access_locked: false, school_license_plan: '', school_license_label: 'No license issued', school_license_code: '', school_license_status: 'Not Issued', school_license_issued_at: '', school_license_activated_at: '', school_license_expires_at: '', school_license_last_checked_at: '', super_admin_username: 'superadmin', super_admin_password: 'superadmin12345', promotion_pass_mark: 50 };
+const defaultSchool = { school_name: 'Multi School Management', address: '', contact: '', location: '', logo_url: '', theme_choice: 'emerald', header_theme_choice: 'softWhite', footer_theme_choice: 'midnight', login_background_url: '', font_choice: 'inter', principal_signature_url: '', audio_greeting_enabled: true, login_greeting_template: 'Welcome {firstName}, You may proceed.', logout_greeting_message: 'Goodbye, Nice having you on board.', failed_login_greeting_message: 'Login fails, please verify your identity carefully or contact your school IT department to ratify the issue.', platform_access_locked: false, school_admin_access_locked: false, school_license_plan: '', school_license_label: 'No license issued', school_license_code: '', school_license_status: 'Not Issued', school_license_issued_at: '', school_license_activated_at: '', school_license_expires_at: '', school_license_last_checked_at: '', super_admin_username: 'superadmin', super_admin_password: 'superadmin12345', promotion_pass_mark: 50 };
 const legacyUid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const uid = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : legacyUid());
 const newRecordId = uid;
@@ -4904,7 +4904,7 @@ function buildDeployableSchoolIndexHtml(settings={}, options={}) {
   html = html.replace(/contact:\s*['"][\s\S]*?['"]/, `contact: ${schoolJsLiteral(settings.contact || '')}`);
   html = html.replace(/location:\s*['"][\s\S]*?['"]/, `location: ${schoolJsLiteral(settings.location || '')}`);
   html = html.replace(/logo_url:\s*['"][\s\S]*?['"]/, `logo_url: 'school-app-icon-512.png'`);
-  html = html.replace(/Wood-World Missions Int\. School/g, schoolName.replace(/[$]/g, '$$$$'));
+  html = html.replace(/Multi School Management\. School/g, schoolName.replace(/[$]/g, '$$$$'));
   return html;
 }
 function buildSchoolSettingsSeedSql(settings={}) {
