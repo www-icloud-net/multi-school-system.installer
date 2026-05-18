@@ -239,6 +239,7 @@ const FONT_OPTIONS = {
 const THEME_STORAGE_KEY = 'school_system_theme_choice';
 const HEADER_THEME_STORAGE_KEY = 'school_system_header_theme_choice';
 const FOOTER_THEME_STORAGE_KEY = 'school_system_footer_theme_choice';
+const SCHOOL_PACKAGE_STORAGE_KEY = 'school_new_github_package_form_v1';
 const BACKEND_SAFE_THEME_CHOICES = ['emerald', 'blue', 'purple', 'amber', 'rose', 'teal', 'indigo', 'crimson'];
 const BACKEND_SAFE_HEADER_THEME_CHOICES = ['softWhite', 'emeraldGlow', 'oceanSky', 'royalViolet', 'sunsetAmber', 'graphite'];
 const BACKEND_SAFE_FOOTER_THEME_CHOICES = ['midnight', 'emeraldDeep', 'oceanDeep', 'royalDeep', 'amberDeep', 'charcoal'];
@@ -250,6 +251,36 @@ function normalizeFontChoice(value) { return FONT_OPTIONS[value] ? value : 'inte
 function isThemeConstraintError(message) { return /school_settings_(theme_choice|header_theme_choice|footer_theme_choice)_check|theme_choice|header_theme_choice|footer_theme_choice/i.test(String(message || '')); }
 function safeStorageGet(key) { try { return localStorage.getItem(key) || ''; } catch (e) { return ''; } }
 function safeStorageSet(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+
+function readSavedSchoolPackageForm() {
+  try {
+    const raw = safeStorageGet(SCHOOL_PACKAGE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+function normalizeSchoolPackageFormPayload(value={}) {
+  return {
+    school_name: String(value.school_name || '').trim(),
+    logo_url: String(value.logo_url || '').trim(),
+    address: String(value.address || '').trim(),
+    contact: String(value.contact || '').trim(),
+    location: String(value.location || '').trim(),
+    app_short_name: String(value.app_short_name || '').trim(),
+    supabase_url: String(value.supabase_url || '').trim(),
+    supabase_anon_key: String(value.supabase_anon_key || '').trim(),
+    theme_choice: normalizeThemeChoice(value.theme_choice || 'emerald'),
+    header_theme_choice: normalizeHeaderThemeChoice(value.header_theme_choice || 'softWhite'),
+    footer_theme_choice: normalizeFooterThemeChoice(value.footer_theme_choice || 'midnight'),
+    font_choice: normalizeFontChoice(value.font_choice || 'inter')
+  };
+}
+function saveSchoolPackageFormPayload(value={}) {
+  const payload = normalizeSchoolPackageFormPayload(value);
+  safeStorageSet(SCHOOL_PACKAGE_STORAGE_KEY, JSON.stringify(payload));
+  return payload;
+}
 function rememberThemeSelections(themeKey, headerThemeKey, footerThemeKey) {
   safeStorageSet(THEME_STORAGE_KEY, normalizeThemeChoice(themeKey || 'emerald'));
   safeStorageSet(HEADER_THEME_STORAGE_KEY, normalizeHeaderThemeChoice(headerThemeKey || 'softWhite'));
@@ -4039,60 +4070,106 @@ function SchoolAdminLicenseUsage({ lockedMode=false }) {
 function SuperAdminSchoolPackageSettings() {
   const { data, notify } = React.useContext(DataContext);
   const currentSettings = data.schoolSettings || defaultSchool;
-  const initialPackageForm = React.useCallback(() => ({
-    school_name: '',
-    logo_url: '',
-    address: '',
-    contact: '',
-    location: '',
-    app_short_name: '',
-    supabase_url: '',
-    supabase_anon_key: '',
-    theme_choice: normalizeThemeChoice(currentSettings.theme_choice || 'emerald'),
-    header_theme_choice: normalizeHeaderThemeChoice(currentSettings.header_theme_choice || 'softWhite'),
-    footer_theme_choice: normalizeFooterThemeChoice(currentSettings.footer_theme_choice || 'midnight'),
-    font_choice: normalizeFontChoice(currentSettings.font_choice || 'inter')
-  }), [currentSettings.theme_choice, currentSettings.header_theme_choice, currentSettings.footer_theme_choice, currentSettings.font_choice]);
-  const [packageForm, setPackageForm] = React.useState(initialPackageForm);
+  const buildDefaultPackageForm = React.useCallback(() => {
+    const base = {
+      school_name: '',
+      logo_url: '',
+      address: '',
+      contact: '',
+      location: '',
+      app_short_name: '',
+      supabase_url: '',
+      supabase_anon_key: '',
+      theme_choice: normalizeThemeChoice(currentSettings.theme_choice || 'emerald'),
+      header_theme_choice: normalizeHeaderThemeChoice(currentSettings.header_theme_choice || 'softWhite'),
+      footer_theme_choice: normalizeFooterThemeChoice(currentSettings.footer_theme_choice || 'midnight'),
+      font_choice: normalizeFontChoice(currentSettings.font_choice || 'inter')
+    };
+    const saved = readSavedSchoolPackageForm();
+    return saved ? { ...base, ...normalizeSchoolPackageFormPayload(saved) } : base;
+  }, [currentSettings.theme_choice, currentSettings.header_theme_choice, currentSettings.footer_theme_choice, currentSettings.font_choice]);
+  const [packageForm, setPackageForm] = React.useState(buildDefaultPackageForm);
+  const [packageSaved, setPackageSaved] = React.useState(Boolean(readSavedSchoolPackageForm()));
+  React.useEffect(() => { window.__schoolLogoPackageDataUrl = packageForm.logo_url || ''; }, [packageForm.logo_url]);
   const resetPackageForm = () => {
     window.__schoolLogoPackageDataUrl = '';
-    setPackageForm(initialPackageForm());
+    setPackageForm({
+      school_name: '',
+      logo_url: '',
+      address: '',
+      contact: '',
+      location: '',
+      app_short_name: '',
+      supabase_url: '',
+      supabase_anon_key: '',
+      theme_choice: normalizeThemeChoice(currentSettings.theme_choice || 'emerald'),
+      header_theme_choice: normalizeHeaderThemeChoice(currentSettings.header_theme_choice || 'softWhite'),
+      footer_theme_choice: normalizeFooterThemeChoice(currentSettings.footer_theme_choice || 'midnight'),
+      font_choice: normalizeFontChoice(currentSettings.font_choice || 'inter')
+    });
+    safeStorageSet(SCHOOL_PACKAGE_STORAGE_KEY, '');
+    setPackageSaved(false);
+    notify('info', 'New school package fields reset.');
   };
   const updatePackageField = (key, value) => setPackageForm(current => {
     const next = { ...current, [key]: value };
     if (key === 'school_name' && !current.app_short_name) next.app_short_name = schoolDeploymentShortName(value, '');
     if (key === 'logo_url') window.__schoolLogoPackageDataUrl = value || '';
+    setPackageSaved(false);
     return next;
   });
-  const buildPackageSettingsPayload = () => ({
-    ...currentSettings,
-    school_name: String(packageForm.school_name || '').trim(),
-    address: String(packageForm.address || '').trim(),
-    contact: String(packageForm.contact || '').trim(),
-    location: String(packageForm.location || '').trim(),
-    logo_url: String(packageForm.logo_url || '').trim(),
-    theme_choice: normalizeThemeChoice(packageForm.theme_choice || currentSettings.theme_choice || 'emerald'),
-    header_theme_choice: normalizeHeaderThemeChoice(packageForm.header_theme_choice || currentSettings.header_theme_choice || 'softWhite'),
-    footer_theme_choice: normalizeFooterThemeChoice(packageForm.footer_theme_choice || currentSettings.footer_theme_choice || 'midnight'),
-    font_choice: normalizeFontChoice(packageForm.font_choice || currentSettings.font_choice || 'inter')
-  });
-  const buildPackageOptionsPayload = () => ({
-    app_short_name: String(packageForm.app_short_name || '').trim(),
-    supabase_url: String(packageForm.supabase_url || '').trim(),
-    supabase_anon_key: String(packageForm.supabase_anon_key || '').trim()
-  });
-  const validatePackagePayload = () => {
-    const payload = buildPackageSettingsPayload();
-    const options = buildPackageOptionsPayload();
-    if (!payload.school_name) throw new Error('Enter the new school name.');
-    if (!payload.logo_url) throw new Error('Select the new school logo.');
-    if (!options.supabase_url) throw new Error('Enter the new school Supabase project URL.');
-    if (!options.supabase_anon_key) throw new Error('Enter the new school Supabase anon key.');
+  const validatePackageFormInputs = (sourceForm=packageForm) => {
+    const normalized = normalizeSchoolPackageFormPayload(sourceForm);
+    if (!normalized.school_name) throw new Error('Enter the new school name.');
+    if (!normalized.logo_url) throw new Error('Select the new school logo.');
+    if (!normalized.supabase_url) throw new Error('Enter the new school Supabase project URL.');
+    if (!normalized.supabase_anon_key) throw new Error('Enter the new school Supabase anon key.');
+    return normalized;
+  };
+  const savePackageDetails = ({ quiet=false } = {}) => {
+    const normalized = validatePackageFormInputs(packageForm);
+    const saved = saveSchoolPackageFormPayload(normalized);
+    window.__schoolLogoPackageDataUrl = saved.logo_url || '';
+    setPackageForm(saved);
+    setPackageSaved(true);
+    if (!quiet) notify('success', 'New school package details saved.');
+    return saved;
+  };
+  const buildPackageSettingsPayload = (sourceForm=packageForm) => {
+    const normalized = normalizeSchoolPackageFormPayload(sourceForm);
+    return {
+      ...currentSettings,
+      school_name: normalized.school_name,
+      address: normalized.address,
+      contact: normalized.contact,
+      location: normalized.location,
+      logo_url: normalized.logo_url,
+      theme_choice: normalizeThemeChoice(normalized.theme_choice || currentSettings.theme_choice || 'emerald'),
+      header_theme_choice: normalizeHeaderThemeChoice(normalized.header_theme_choice || currentSettings.header_theme_choice || 'softWhite'),
+      footer_theme_choice: normalizeFooterThemeChoice(normalized.footer_theme_choice || currentSettings.footer_theme_choice || 'midnight'),
+      font_choice: normalizeFontChoice(normalized.font_choice || currentSettings.font_choice || 'inter')
+    };
+  };
+  const buildPackageOptionsPayload = (sourceForm=packageForm) => {
+    const normalized = normalizeSchoolPackageFormPayload(sourceForm);
+    return {
+      app_short_name: normalized.app_short_name,
+      supabase_url: normalized.supabase_url,
+      supabase_anon_key: normalized.supabase_anon_key
+    };
+  };
+  const validatePackagePayload = (sourceForm=packageForm) => {
+    const normalized = validatePackageFormInputs(sourceForm);
+    const payload = buildPackageSettingsPayload(normalized);
+    const options = buildPackageOptionsPayload(normalized);
+    if (!options.supabase_url || options.supabase_url === SUPABASE_URL) throw new Error('Enter and save the new school Supabase project URL.');
+    if (!options.supabase_anon_key || options.supabase_anon_key === SUPABASE_ANON_KEY) throw new Error('Enter and save the new school Supabase anon key.');
     return { payload, options };
   };
   const generateZipPackage = async () => {
     try {
-      const { payload, options } = validatePackagePayload();
+      const saved = savePackageDetails({ quiet: true });
+      const { payload, options } = validatePackagePayload(saved);
       await downloadSchoolFrontendZip(payload, options);
       notify('success', 'New school GitHub package generated.');
     } catch (error) {
@@ -4101,7 +4178,8 @@ function SuperAdminSchoolPackageSettings() {
   };
   const exportOutputFolder = async () => {
     try {
-      const { payload, options } = validatePackagePayload();
+      const saved = savePackageDetails({ quiet: true });
+      const { payload, options } = validatePackagePayload(saved);
       const result = await saveSchoolFrontendOutputFolder(payload, options);
       notify('success', result === 'folder' ? 'New school output folder created.' : 'New school GitHub package generated.');
     } catch (error) {
@@ -4114,7 +4192,7 @@ function SuperAdminSchoolPackageSettings() {
     <div className="card p-5 space-y-5 max-w-6xl">
       <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
         <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center"><i className="fas fa-box-open"></i></div>
-        <div><h3 className="font-extrabold text-lg text-slate-900">New School GitHub Package</h3></div>
+        <div><h3 className="font-extrabold text-lg text-slate-900">New School GitHub Package</h3>{packageSaved && <div className="text-xs font-bold text-emerald-700 mt-1"><i className="fas fa-check-circle mr-1"></i>Package details saved</div>}</div>
       </div>
       <div className="grid lg:grid-cols-[.95fr_1.05fr] gap-5 items-start">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
@@ -4141,6 +4219,7 @@ function SuperAdminSchoolPackageSettings() {
           </div>
           <div className="flex flex-wrap justify-end gap-2 pt-2">
             <button type="button" className="btn btn-secondary" onClick={resetPackageForm}><i className="fas fa-rotate-left mr-2"></i>Reset</button>
+            <button type="button" className="btn btn-outline" onClick={() => { try { savePackageDetails(); } catch (error) { notify('error', error?.message || 'Package details could not be saved.'); } }}><i className="fas fa-save mr-2"></i>Save Package Details</button>
             <button type="button" className="btn btn-outline" onClick={generateZipPackage}><i className="fas fa-file-zipper mr-2"></i>Download GitHub ZIP</button>
             <button type="button" className="btn btn-primary" onClick={exportOutputFolder}><i className="fas fa-folder-plus mr-2"></i>Create Output Folder</button>
           </div>
@@ -4905,8 +4984,10 @@ function buildDeployableSchoolIndexHtml(settings={}, options={}) {
   cloneDoc.querySelectorAll('link[rel="apple-touch-icon"]').forEach(link => link.setAttribute('href', `school-app-icon-180.png?v=${cacheTag}`));
   cloneDoc.querySelectorAll('link[rel="shortcut icon"]').forEach(link => link.setAttribute('href', `favicon.ico?v=${cacheTag}`));
   let html = '<!DOCTYPE html>\n' + cloneDoc.outerHTML;
-  html = html.replace(/const SUPABASE_URL = ['"][\s\S]*?['"];?/m, `const SUPABASE_URL = ${schoolJsLiteral(options.supabase_url || SUPABASE_URL)};`);
-  html = html.replace(/const SUPABASE_ANON_KEY = ['"][\s\S]*?['"];?/m, `const SUPABASE_ANON_KEY = ${schoolJsLiteral(options.supabase_anon_key || SUPABASE_ANON_KEY)};`);
+  const outputSupabaseUrl = String(options.supabase_url || '').trim();
+  const outputSupabaseAnonKey = String(options.supabase_anon_key || '').trim();
+  html = html.replace(/const SUPABASE_URL = ['"][\s\S]*?['"];?/m, `const SUPABASE_URL = ${schoolJsLiteral(outputSupabaseUrl)};`);
+  html = html.replace(/const SUPABASE_ANON_KEY = ['"][\s\S]*?['"];?/m, `const SUPABASE_ANON_KEY = ${schoolJsLiteral(outputSupabaseAnonKey)};`);
   html = html.replace(/school_name:\s*['"][\s\S]*?['"]/, `school_name: ${schoolJsLiteral(schoolName)}`);
   html = html.replace(/address:\s*['"][\s\S]*?['"]/, `address: ${schoolJsLiteral(settings.address || '')}`);
   html = html.replace(/contact:\s*['"][\s\S]*?['"]/, `contact: ${schoolJsLiteral(settings.contact || '')}`);
@@ -5087,6 +5168,17 @@ function SchoolSettingsManager() {
     }));
   };
 
+  const saveAudioGreeting = async () => {
+    await setSchoolSettings(current => ({
+      ...current,
+      audio_greeting_enabled: !!form.audio_greeting_enabled,
+      login_greeting_template: String(form.login_greeting_template || defaultSchool.login_greeting_template),
+      logout_greeting_message: String(form.logout_greeting_message || defaultSchool.logout_greeting_message),
+      failed_login_greeting_message: String(form.failed_login_greeting_message || defaultSchool.failed_login_greeting_message)
+    }));
+    notify('success', 'Audio greeting personalization saved.');
+  };
+
   const previewTheme = key => setThemeChoice(normalizeThemeChoice(key));
   const previewFont = key => {
     const nextKey = normalizeFontChoice(key);
@@ -5160,6 +5252,27 @@ function SchoolSettingsManager() {
             <Field label="Super Admin Password"><input type="password" className="input" value={form.super_admin_password || ''} onChange={e => setForm({ ...form, super_admin_password: e.target.value })} /></Field>
             <Field label="Confirm Password"><input type="password" className="input" value={confirmSuperAdminPassword} onChange={e => setConfirmSuperAdminPassword(e.target.value)} placeholder="Optional when unchanged" /></Field>
           </form>
+        </div>}
+
+        {isSuperAdmin && <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+            <div>
+              <div className="font-bold text-lg">Audio Greeting Personalization</div>
+              <div className="text-sm text-slate-500 mt-1">Manage login, logout, and failed login voice messages for the school portal.</div>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={saveAudioGreeting}><i className="fas fa-volume-high mr-2"></i>Save Audio Greeting</button>
+          </div>
+          <div className="grid lg:grid-cols-[240px_1fr] gap-4 items-start">
+            <label className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex items-center gap-3 font-bold text-sm text-slate-700">
+              <input type="checkbox" className="w-5 h-5" checked={!!form.audio_greeting_enabled} onChange={e => setForm({ ...form, audio_greeting_enabled: e.target.checked })} />
+              Enable audio greeting
+            </label>
+            <div className="grid md:grid-cols-3 gap-4">
+              <Field label="Login Greeting Template"><textarea className="textarea" rows="3" value={form.login_greeting_template || ''} onChange={e => setForm({ ...form, login_greeting_template: e.target.value })}></textarea></Field>
+              <Field label="Logout Greeting Message"><textarea className="textarea" rows="3" value={form.logout_greeting_message || ''} onChange={e => setForm({ ...form, logout_greeting_message: e.target.value })}></textarea></Field>
+              <Field label="Failed Login Greeting"><textarea className="textarea" rows="3" value={form.failed_login_greeting_message || ''} onChange={e => setForm({ ...form, failed_login_greeting_message: e.target.value })}></textarea></Field>
+            </div>
+          </div>
         </div>}
 
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
